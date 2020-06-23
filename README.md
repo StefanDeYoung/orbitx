@@ -15,19 +15,13 @@ This project is maintained by
 - Patrick
 - Ye Qin
 - Sean
-- Stefan De Young
+-Cesare Corazza
 
 As part of CS493 and CS494, a final year project course at Waterloo.
 
-Furthermore, several members and alumni of OCESS are contributing, such as:
-- Cesare Corazza
-- Jamie Tait
-- Jonah Hamer-Wilson
-- Calum Wheaton
-
 ## First Time Contributors
 
-If you're a first-time contributor to OrbitX, take a look at `CONTRIBUTING.md`,
+If your a first-time contributor to OrbitX, take a look at `CONTRIBUTING.md`,
 especially if you don't recognize the `git clone` command in the Project Setup
 section. The `CONTRIBUTING.md` has helpful tips for first-time contributors.
 
@@ -54,10 +48,6 @@ make install # installs packages in requirements.txt, make sure you've activated
 If you're on windows, replace `source venv/bin/activate` with
 `Scripts\Activate.bat` on `cmd`, or `Scripts\Activate.ps1` if you know you're
 running powershell. Also you'll have to just run the make commands manually, by running `cat Makefile` and copying the command you want.
-
-If you get an error referencing "Microsoft Visual C++ Build Tools", especially when
-installing `yappi`, install [the build tools](https://www.scivision.dev/python-windows-visual-c-14-required/)
-(choose Windows 10 SDK and C++ x64/x86 build tools in the installer).
 
 And when you want to restart development, just do:
 
