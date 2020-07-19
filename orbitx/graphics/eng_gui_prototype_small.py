@@ -32,14 +32,104 @@ class MainApplication(tk.Tk):
         super().__init__()
 
         tk.Tk.wm_title(self, "tkinter widget demo")
-        self.geometry("400x300")
+        self.geometry("800x300")
 
         # Initialise main page
-        self.page = HabPage(self)
-        self.page.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+        self.subsystems = Subsystems(self)
+        self.subsystems.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+
+        self.e_grid = E_Grid(self)
+        self.e_grid.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH)
 
 
-class HabPage(tk.Frame):
+class E_Grid(tk.Frame):
+
+    def __init__(self, parent):
+        tk.Frame.__init__(self, parent)
+        self.configure(bg=style.bg)
+
+        # LEFT Hab Power Bus
+        widgets['e_hpb'] = tk.Frame(self, bg=style.bg, bd=2, relief=tk.RIDGE)
+
+        hab_power_bus = tk.Label(widgets['e_hpb'], text='LEFT OBJECT',
+                                 bg=style.bg, fg=style.text, font=style.normal)
+        widgets['e_hpb_p'] = cw.ENGLabel(widgets['e_hpb'],
+                                         text='', value=60, unit='kW',
+                                         style=style)
+        widgets['e_hpb_p'].configure(fg=style.ind_on, font=style.small)
+        widgets['e_hpb_i'] = cw.ENGLabel(widgets['e_hpb'],
+                                         text='', value=6.0, unit='A',
+                                         style=style)
+        widgets['e_hpb_i'].configure(fg=style.ind_on, font=style.small)
+        widgets['e_hpb_v'] = cw.ENGLabel(widgets['e_hpb'],
+                                         text='', value=10.0, unit='kV',
+                                         style=style)
+        widgets['e_hpb_v'].configure(fg=style.ind_on, font=style.small)
+
+        widgets['e_hpb'].grid(row=1, column=0, padx=5, pady=5)
+        hab_power_bus.grid(row=0, column=0, sticky=tk.W)
+        widgets['e_hpb_p'].grid(row=1, column=0, sticky=tk.W)
+        widgets['e_hpb_i'].grid(row=2, column=0, sticky=tk.W)
+        widgets['e_hpb_v'].grid(row=3, column=0, sticky=tk.W)
+
+        # MIDDLE Hab Power Bus
+        widgets['e_hpb'] = tk.Frame(self, bg=style.bg, bd=2, relief=tk.RIDGE)
+
+        hab_power_bus = tk.Label(widgets['e_hpb'], text='MIDDLE OBJECT',
+                                 bg=style.bg, fg=style.text, font=style.normal)
+        widgets['e_hpb_p'] = cw.ENGLabel(widgets['e_hpb'],
+                                         text='', value=60, unit='kW',
+                                         style=style)
+        widgets['e_hpb_p'].configure(fg=style.ind_on, font=style.small)
+        widgets['e_hpb_i'] = cw.ENGLabel(widgets['e_hpb'],
+                                         text='', value=6.0, unit='A',
+                                         style=style)
+        widgets['e_hpb_i'].configure(fg=style.ind_on, font=style.small)
+        widgets['e_hpb_v'] = cw.ENGLabel(widgets['e_hpb'],
+                                         text='', value=10.0, unit='kV',
+                                         style=style)
+        widgets['e_hpb_v'].configure(fg=style.ind_on, font=style.small)
+
+        widgets['e_hpb'].grid(row=1, column=2, pady=5)
+        hab_power_bus.grid(row=0, column=0, sticky=tk.W)
+        widgets['e_hpb_p'].grid(row=1, column=0, sticky=tk.W)
+        widgets['e_hpb_i'].grid(row=2, column=0, sticky=tk.W)
+        widgets['e_hpb_v'].grid(row=3, column=0, sticky=tk.W)
+
+        # BOTTOM Hab Power Bus
+        widgets['e_hpb'] = tk.Frame(self, bg=style.bg, bd=2, relief=tk.RIDGE)
+
+        hab_power_bus = tk.Label(widgets['e_hpb'], text='BOTTOM OBJECT',
+                                 bg=style.bg, fg=style.text, font=style.normal)
+        widgets['e_hpb_p'] = cw.ENGLabel(widgets['e_hpb'],
+                                         text='', value=60, unit='kW',
+                                         style=style)
+        widgets['e_hpb_p'].configure(fg=style.ind_on, font=style.small)
+        widgets['e_hpb_i'] = cw.ENGLabel(widgets['e_hpb'],
+                                         text='', value=6.0, unit='A',
+                                         style=style)
+        widgets['e_hpb_i'].configure(fg=style.ind_on, font=style.small)
+        widgets['e_hpb_v'] = cw.ENGLabel(widgets['e_hpb'],
+                                         text='', value=10.0, unit='kV',
+                                         style=style)
+        widgets['e_hpb_v'].configure(fg=style.ind_on, font=style.small)
+
+        widgets['e_hpb'].grid(row=3, column=2, padx=5, pady=5)
+        hab_power_bus.grid(row=0, column=0, sticky=tk.W)
+        widgets['e_hpb_p'].grid(row=1, column=0, sticky=tk.W)
+        widgets['e_hpb_i'].grid(row=2, column=0, sticky=tk.W)
+        widgets['e_hpb_v'].grid(row=3, column=0, sticky=tk.W)
+
+        # Switches
+        # LEFT<->MIDDLE Connector
+        widgets['sw_left_mid'] = cw.Switch(self, length='3h', style=style)
+        widgets['sw_left_mid'].grid(row=1, column=1)
+
+        widgets['sw_mid_bot'] = cw.Switch(self, length='1v', style=style)
+        widgets['sw_mid_bot'].grid(row=2, column=2)
+
+
+class Subsystems(tk.Frame):
 
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
@@ -61,10 +151,11 @@ class HabPage(tk.Frame):
         widgets['CHUTE'] = cw.OneTimeButton(frame, text='CHUTE', style=style)
 
         # A couple of labels
-        widgets['habr_temp'] = cw.ENGLabel(frame, text='TEMP',
+        text_frame = tk.Frame(frame, bg=style.bg)
+        widgets['habr_temp'] = cw.ENGLabel(text_frame, text='TEMP',
                                            value=0, unit='℃',    # U+2103
                                            style=style)
-        widgets['cl1_pump'] = cw.ENGLabel(frame, text='PUMP',
+        widgets['cl1_pump'] = cw.ENGLabel(text_frame, text='PUMP',
                                            value=0, unit='%', style=style)
 
         # Display label
@@ -79,8 +170,9 @@ class HabPage(tk.Frame):
         widgets['LOS'].grid(row=1, column=1, padx=5, pady=5)
         widgets['SRB'].grid(row=0, column=2, padx=5, pady=5)
         widgets['CHUTE'].grid(row=1, column=2, padx=5, pady=5)
-        widgets['habr_temp'].grid(row=0, column=3, padx=5, pady=5)
-        widgets['cl1_pump'].grid(row=1, column=3, padx=5, pady=5)
+        text_frame.grid(row=0, column=3, padx=5, pady=5)
+        widgets['habr_temp'].grid(row=0, column=0, padx=5, pady=5)
+        widgets['cl1_pump'].grid(row=1, column=0, padx=5, pady=5)
         widgets['event_display'].grid(row=3, column=0, padx=5, pady=40,
                                       columnspan=4)
 

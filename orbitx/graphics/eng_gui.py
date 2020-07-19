@@ -29,7 +29,8 @@ class MainApplication(tk.Tk):
         super().__init__()
 
         tk.Tk.wm_title(self, "OrbitX Engineering")
-        self.geometry("1000x900")
+        # OCESS screens vary between 800x600 and 1024x768
+        self.geometry("800x600")
 
         # Create menubar
         menubar = self._create_menu()

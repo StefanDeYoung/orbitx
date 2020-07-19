@@ -1,7 +1,12 @@
 import tkinter as tk
 from orbitx.graphics.tkinter_style import Style
 from typing import Union, Optional
+from PIL import Image, ImageColor, ImageTk
 
+# Holder for images, to avoid garbage collection before rendering
+images = {}
+sw_unit_w = 47
+sw_unit_h = 47
 
 class ENGLabel(tk.Label):
     """
@@ -207,3 +212,133 @@ class ENGScale(tk.Scale):
     def update_slider_label(self, val):
         self.label.value = val
         self.label.update()
+
+
+class Switch(tk.Button):
+    """
+    A pipe that shows electrical connections between elements of the
+    power grid.
+
+    length='1h' shows '💢' for open and '=' for closed
+    length='1v' shows '💢' for open and '||' for closed
+    length='3h' shows '=💢=' for open and '===' for closed
+    """
+
+    def __init__(self, parent, length: str = '1h', style=Style('default'),
+                 *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+
+        self.style = style
+
+        assert int(length[0]) % 2 == 1  # Length must be odd
+        assert length[1] == 'h' or length[1] == 'v'
+        self.length = length
+
+        if not ('switch_open_{}'.format(self.length)) in images:
+            self.generate_images()
+
+        self.width = images['switch_open_{}'.format(self.length)].width()
+        self.height = images['switch_open_{}'.format(self.length)].height()
+
+        self.configure(image=images['switch_open_{}'.format(self.length)],
+                       command=self.press,
+                       width=self.width,
+                       height=self.height,
+                       relief=tk.FLAT,
+                       bd=0,
+                       highlightbackground=style.bg,
+                       highlightthickness=0,
+                       highlightcolor=style.bg
+                       )
+
+        # # TODO Add a char to the button to show its keybinding
+        # # As far as I can tell, compound=tk.CENTER is the only choice
+        # # to be able to superimpose the text on the button's image
+        # # Using this method puts a border around the button, which, for some
+        # # reason isn't disabled by setting the bd, highlightbackground, and
+        # # highlightthickness. Keep reading
+        # # https://effbot.org/tkinterbook/button.htm
+        #
+        # self.configure(fg=style.text,
+        #                text='a',
+        #                compound=tk.CENTER)
+
+
+        self.value = 0
+
+    def press(self):
+        if self.value == 0:
+            self.value = 1
+            self.configure(image=images['switch_closed_{}'.format(self.length)],
+                           relief=tk.FLAT)
+        else:
+            self.value = 0
+            self.configure(image=images['switch_open_{}'.format(self.length)])
+
+    def generate_images(self):
+        try:
+            mid_off = Image.open('../../data/textures/eng_switch_open.PNG')
+            out_off = Image.open('../../data/textures/eng_switch_closed.PNG')
+        except IOError:
+            print('Unable to load images: Engineering Switches')
+
+        assert mid_off.width == out_off.width
+        assert mid_off.height == out_off.height
+        width = mid_off.width
+        height = mid_off.height
+
+        color_on = ImageColor.getrgb(self.style.sw_on)
+        color_off = ImageColor.getrgb(self.style.sw_off)
+        color_bg = ImageColor.getrgb(self.style.bg)
+
+        def set_style(im: Image, bg: tuple, fg: tuple) -> Image:
+            pixels = im.load()
+
+            for i in range(im.size[0]):
+                for j in range(im.size[1]):
+                    if pixels[i, j] == (0, 0, 0, 0):
+                        pixels[i, j] = bg
+                    else:
+                        pixels[i, j] = fg
+
+            return im
+
+        out_on = out_off.copy()
+
+        mid_off = set_style(mid_off, color_bg, color_off)
+        out_off = set_style(out_off, color_bg, color_off)
+        out_on = set_style(out_on, color_bg, color_on)
+
+        if self.length[1] == 'v':
+            out_off = out_off.rotate(90)
+            out_on = out_on.rotate(90)
+
+        sw_size = int(self.length[0])
+
+        if sw_size == 1:
+            sw_off = mid_off
+            sw_on = out_on
+        else:
+            if self.length[1] == 'h':
+                sw_off = Image.new('RGB', (sw_size * width, height))
+                sw_on = Image.new('RGB', (sw_size * width, height))
+                for i in range(sw_size):
+                    sw_on.paste(out_on, (i * width, 0))
+                    if i == (sw_size - 1) / 2:
+                        sw_off.paste(mid_off, (i * width, 0))
+                    else:
+                        sw_off.paste(out_off, (i * width, 0))
+            else:
+                sw_off = Image.new('RGB', (width, sw_size * height))
+                sw_on = Image.new('RGB', (width, sw_size * height))
+                for i in range(sw_size):
+                    sw_on.paste(out_on, (0, i * height))
+                    if i == (sw_size - 1) / 2:
+                        sw_off.paste(mid_off, (0, i * height))
+                    else:
+                        sw_off.paste(out_off, (0, i * height))
+
+        images['switch_open_{}'.format(self.length)] = \
+            ImageTk.PhotoImage(sw_off)
+        images['switch_closed_{}'.format(self.length)] = \
+            ImageTk.PhotoImage(sw_on)
