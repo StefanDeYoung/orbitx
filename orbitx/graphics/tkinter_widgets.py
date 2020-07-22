@@ -7,6 +7,19 @@ from PIL import Image, ImageColor, ImageTk
 images = {}
 
 
+def set_im_style(im: Image, bg: tuple, fg: tuple) -> Image:
+    pixels = im.load()
+
+    for i in range(im.size[0]):
+        for j in range(im.size[1]):
+            if pixels[i, j] == (0, 0, 0, 0):
+                pixels[i, j] = bg
+            else:
+                pixels[i, j] = fg
+
+    return im
+
+
 class ENGLabel(tk.Label):
     """
     Use to display a label that also has a value, which may take a unit.
@@ -132,7 +145,6 @@ class OneTimeButton(tk.Button):
                        bg=style.otb_unused,
                        command=self.press
                        )
-        self.bind('<Button-1>', lambda x: self.press())
 
         self.value = 0
         self.style = style
@@ -324,23 +336,11 @@ class Switch(tk.Button):
         color_off = ImageColor.getrgb(self.style.sw_off)
         color_bg = ImageColor.getrgb(self.style.bg)
 
-        def set_style(im: Image, bg: tuple, fg: tuple) -> Image:
-            pixels = im.load()
-
-            for i in range(im.size[0]):
-                for j in range(im.size[1]):
-                    if pixels[i, j] == (0, 0, 0, 0):
-                        pixels[i, j] = bg
-                    else:
-                        pixels[i, j] = fg
-
-            return im
-
         out_on = out_off.copy()
 
-        mid_off = set_style(mid_off, color_bg, color_off)
-        out_off = set_style(out_off, color_bg, color_off)
-        out_on = set_style(out_on, color_bg, color_on)
+        mid_off = set_im_style(mid_off, color_bg, color_off)
+        out_off = set_im_style(out_off, color_bg, color_off)
+        out_on = set_im_style(out_on, color_bg, color_on)
 
         if self.length[1] == 'v':
             out_off = out_off.rotate(90)
@@ -375,3 +375,87 @@ class Switch(tk.Button):
             ImageTk.PhotoImage(sw_off)
         images['switch_closed_{}'.format(self.length)] = \
             ImageTk.PhotoImage(sw_on)
+
+
+class Enabler(tk.Button):
+    """
+    A button that controls whether another button or component can be
+    interacted with.
+
+    e.g.
+    widgets[SRB] = cw.OneTimeButton(frame, text=SRB, style=style)
+    widgets['arm_SRB'] = cw.Enabler(frame, enables=widgets['SRB'], style=style)
+    """
+
+    def __init__(self, parent, enables: tk.Widget, style=Style('default'),
+                 *args, **kwargs):
+        super().__init__(parent)
+
+        self.enables = enables
+        self.style = style
+
+        if not ('enabler_unarmed' in images):
+            self.generate_images()
+
+        self.width = images['enabler_unarmed'].width()
+        self.height = images['enabler_unarmed'].height()
+
+        self.configure(command=self.press,
+                       width=self.width,
+                       height=self.height,
+                       relief=tk.RIDGE,
+                       bd=0,
+                       highlightbackground=style.bg,
+                       highlightthickness=0,
+                       highlightcolor=style.bg
+                       )
+
+        self.value = 0
+        self.off_state()
+
+        # # TODO Add a char to the button to show its keybinding
+        # # As far as I can tell, compound=tk.CENTER is the only choice
+        # # to be able to superimpose the text on the button's image
+        # # Using this method puts a border around the button, which, for some
+        # # reason isn't disabled by setting the bd, highlightbackground, and
+        # # highlightthickness. Keep reading
+        # # https://effbot.org/tkinterbook/button.htm
+        #
+        # self.configure(fg=style.text,
+        #                text='a',
+        #                compound=tk.CENTER)
+
+    def off_state(self):
+        self.value = 0
+        self.configure(image=images['enabler_unarmed'])
+        self.enables.configure(state=tk.DISABLED)
+
+    def on_state(self):
+        self.value = 1
+        self.configure(image=images['enabler_armed'])
+        self.enables.configure(state=tk.NORMAL)
+
+    def press(self):
+        if self.value == 0:
+            self.on_state()
+        else:
+            self.off_state()
+
+    def generate_images(self):
+        try:
+            base_image = Image.open('../../data/textures/eng_enable_button.png')
+        except IOError:
+            print('Unable to load images: Engineering Switches')
+
+        color_armed = ImageColor.getrgb(self.style.alert_bg)
+        color_unarmed = ImageColor.getrgb(self.style.sw_off)
+        color_bg = ImageColor.getrgb(self.style.bg)
+
+        armed = base_image.copy()
+        unarmed = base_image.copy()
+
+        armed = set_im_style(armed, color_bg, color_armed)
+        unarmed = set_im_style(unarmed, color_bg, color_unarmed)
+
+        images['enabler_armed'] = ImageTk.PhotoImage(armed)
+        images['enabler_unarmed'] = ImageTk.PhotoImage(unarmed)

@@ -198,15 +198,17 @@ class Subsystems(tk.Frame):
 
         # A couple of OneTimeButtons
         widgets[SRB] = cw.OneTimeButton(frame, text=SRB, style=style)
+        widgets['arm_SRB'] = cw.Enabler(frame, enables=widgets['SRB'],
+                                        style=style)
         widgets[CHUTE] = cw.OneTimeButton(frame, text=CHUTE, style=style)
 
         # A couple of labels
         text_frame = tk.Frame(frame, bg=style.bg)
         hab_reactor_temp = cw.ENGLabel(text_frame, text='TEMP',
-                                           value=0, unit='℃',    # U+2103
-                                           style=style)
+                                       value=0, unit='℃',    # U+2103
+                                       style=style)
         cl1_pump_power = cw.ENGLabel(text_frame, text='PUMP',
-                                           value=0, unit='%', style=style)
+                                     value=0, unit='%', style=style)
 
         # Display label
         widgets['event_display'] = tk.Label(frame, text='Waiting',
@@ -219,10 +221,13 @@ class Subsystems(tk.Frame):
         widgets[INS].grid(row=0, column=1, padx=5, pady=5)
         widgets[LOS].grid(row=1, column=1, padx=5, pady=5)
         widgets[SRB].grid(row=0, column=2, padx=5, pady=5)
+        widgets['arm_SRB'].grid(row=0, column=3, padx=5, pady=5)
         widgets[CHUTE].grid(row=1, column=2, padx=5, pady=5)
-        text_frame.grid(row=0, column=3, padx=5, pady=5)
+
+        text_frame.grid(row=1, column=3, padx=5, pady=5)
         hab_reactor_temp.grid(row=0, column=0, padx=5, pady=5)
         cl1_pump_power.grid(row=1, column=0, padx=5, pady=5)
+
         widgets['event_display'].grid(row=3, column=0, padx=5, pady=40,
                                       columnspan=4)
 
