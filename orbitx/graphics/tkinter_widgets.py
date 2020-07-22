@@ -71,25 +71,43 @@ class TextButton(tk.Button):
     E.g. ion1 = TextButton(parent, text='RAD')
     """
 
-    def __init__(self, parent, style=Style('default'), *args, **kwargs):
+    def __init__(self, parent, connected: bool = False,
+                 style=Style('default'), *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
 
-        self.configure(command=self.press,
-                       font=style.small,
+        self.configure(font=style.small,
                        relief=tk.FLAT,
                        bg=style.bg,
                        fg=style.text)
 
+        if not connected:
+            self.bind('<Button-1>', lambda e: self.press(e))
+        else:
+            self.connection = self.master
+            self.bind('<Button-1>', lambda e: self.switch(e))
+
         self.style = style
         self.value = 0
 
-    def press(self):
+    def change_connection(self, connection):
+        self.connection = connection
+
+    def press(self, event):
         if self.value == 0:
             self.value = 1
             self.configure(fg=self.style.sw_on)
         else:
             self.value = 0
             self.configure(fg=self.style.text)
+
+    def switch(self, event):
+        self.press(event)
+        textbuttons = [v.value for k, v in event.widget.master.children.items()
+                       if '!textbutton' in k]
+        if any(textbuttons):
+            self.connection.on_state()
+        else:
+            self.connection.off_state()
 
 
 class Indicator(tk.Button):

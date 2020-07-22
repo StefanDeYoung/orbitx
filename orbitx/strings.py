@@ -103,6 +103,8 @@ COMPONENT_NAMES = [
 SMALL_COMPONENTS_NAMES = [    # Temp for testing
     HAB_REACT,
     ION1,
-    ACC1,
+    ION2,
+    ION3,
+    ION4,
     LP1
 ]
