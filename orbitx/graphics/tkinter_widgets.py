@@ -5,8 +5,7 @@ from PIL import Image, ImageColor, ImageTk
 
 # Holder for images, to avoid garbage collection before rendering
 images = {}
-sw_unit_w = 47
-sw_unit_h = 47
+
 
 class ENGLabel(tk.Label):
     """
@@ -14,17 +13,23 @@ class ENGLabel(tk.Label):
     E.g. ENGLabel(parent, text='FUEL', value=1000, unit='kg'
     """
 
-    def __init__(self, parent: tk.Widget, text: str, value: Union[int, str],
-                 unit: Optional[str] = None, style=Style('default')):
+    def __init__(self, parent: tk.Widget, text: str = '',
+                 value: Union[int, str]= 'n/a', unit: Optional[str] = None,
+                 style=Style('default'), small: Optional[bool] = False):
         super().__init__(parent)
         self.text = text
         self.value = value
         self.unit = unit
 
-        self.configure(anchor=tk.W, justify=tk.LEFT)
+        self.configure(anchor=tk.W, justify=tk.LEFT,
+                       bg=style.bg, fg=style.text)
 
-        self.update_value()
-        self.update_style(style)
+        if small:
+            self.configure(font=style.small)
+        else:
+            self.configure(font=style.normal)
+
+        self.update_value(self.value)
 
     def text_decorator(self) -> str:
         if self.unit is not None:
@@ -32,13 +37,9 @@ class ENGLabel(tk.Label):
         else:
             return self.text + ' ' + str(self.value)
 
-    def update_value(self):
+    def update_value(self, value):
+        self.value = value
         self.configure(text=self.text_decorator())
-
-    def update_style(self, style):
-        self.configure(bg=style.bg,
-                       fg=style.text,
-                       font=style.normal)
 
 
 class ENGLabelFrame(tk.LabelFrame):
@@ -49,6 +50,33 @@ class ENGLabelFrame(tk.LabelFrame):
     def __init__(self, parent: tk.Widget, text: str, style=Style('default')):
         font = style.normal
         super().__init__(parent, text=text, font=font, fg=style.text, bg=style.bg)
+
+
+class TextButton(tk.Button):
+    """
+    Represents an flat button on the e-grid.
+    E.g. ion1 = TextButton(parent, text='RAD')
+    """
+
+    def __init__(self, parent, style=Style('default'), *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+
+        self.configure(command=self.press,
+                       font=style.small,
+                       relief=tk.FLAT,
+                       bg=style.bg,
+                       fg=style.text)
+
+        self.style = style
+        self.value = 0
+
+    def press(self):
+        if self.value == 0:
+            self.value = 1
+            self.configure(fg=self.style.sw_on)
+        else:
+            self.value = 0
+            self.configure(fg=self.style.text)
 
 
 class Indicator(tk.Button):
@@ -240,8 +268,7 @@ class Switch(tk.Button):
         self.width = images['switch_open_{}'.format(self.length)].width()
         self.height = images['switch_open_{}'.format(self.length)].height()
 
-        self.configure(image=images['switch_open_{}'.format(self.length)],
-                       command=self.press,
+        self.configure(command=self.press,
                        width=self.width,
                        height=self.height,
                        relief=tk.FLAT,
@@ -250,6 +277,9 @@ class Switch(tk.Button):
                        highlightthickness=0,
                        highlightcolor=style.bg
                        )
+
+        self.value = 0
+        self.off_state()
 
         # # TODO Add a char to the button to show its keybinding
         # # As far as I can tell, compound=tk.CENTER is the only choice
@@ -263,17 +293,20 @@ class Switch(tk.Button):
         #                text='a',
         #                compound=tk.CENTER)
 
-
+    def off_state(self):
         self.value = 0
+        self.configure(image=images['switch_open_{}'.format(self.length)])
+
+    def on_state(self):
+        self.value = 1
+        self.configure(image=images['switch_closed_{}'.format(self.length)],
+                       relief=tk.FLAT)
 
     def press(self):
         if self.value == 0:
-            self.value = 1
-            self.configure(image=images['switch_closed_{}'.format(self.length)],
-                           relief=tk.FLAT)
+            self.on_state()
         else:
-            self.value = 0
-            self.configure(image=images['switch_open_{}'.format(self.length)])
+            self.off_state()
 
     def generate_images(self):
         try:
