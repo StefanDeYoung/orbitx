@@ -53,7 +53,7 @@ class Style:
         self.alert_text = '#ecf0f1'  # Alert flash text; Clouds
 
         # Electrical Grid
-        self.sw_off = '#34495e'    # Wet Asphalt
+        self.sw_off = '#bdc3c7'    # Silver
         self.sw_on = '#f1c40f'    # Sunflower
         self.temp_nom = '#16a085'   # Green Sea
         self.temp_med = '#e67e22'   # Carrot
