@@ -150,7 +150,7 @@ class EGrid(tk.Frame):
         components[HAB_REACT].widgets['V'].append(voltage)
 
         # Create Switches
-        widgets['sw_engines'] = cw.Switch(self, length='3h', style=style)
+        widgets['sw_engines'] = cw.Switch(self, length='3h', style=style, connection=ions)
         widgets['sw_mid_bot'] = cw.Switch(self, length='1v', style=style)
 
         # Render EGrid
@@ -160,9 +160,9 @@ class EGrid(tk.Frame):
         widgets['sw_mid_bot'].grid(row=2, column=2)
         bot_object.grid(row=3, column=2, padx=5, pady=2)
 
-        for i in range(4):
-            name = 'ION{}'.format(i+1)
-            widgets[name].change_connection(widgets['sw_engines'])
+        # for i in range(4):
+        #     name = 'ION{}'.format(i+1)
+        #     widgets[name].change_connection(widgets['sw_engines'])
 
 
 class Subsystems(tk.Frame):

@@ -92,13 +92,19 @@ class TextButton(tk.Button):
     def change_connection(self, connection):
         self.connection = connection
 
+    def off_state(self):
+        self.value = 0
+        self.configure(fg=self.style.text)
+
+    def on_state(self):
+        self.value = 1
+        self.configure(fg=self.style.sw_on)
+
     def press(self, event):
         if self.value == 0:
-            self.value = 1
-            self.configure(fg=self.style.sw_on)
+            self.on_state()
         else:
-            self.value = 0
-            self.configure(fg=self.style.text)
+            self.off_state()
 
     def switch(self, event):
         self.press(event)
@@ -283,6 +289,7 @@ class Switch(tk.Button):
     """
 
     def __init__(self, parent, length: str = '1h', style=Style('default'),
+                 connection: Optional[tk.Widget] = None,
                  *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
 
@@ -298,8 +305,7 @@ class Switch(tk.Button):
         self.width = images['switch_open_{}'.format(self.length)].width()
         self.height = images['switch_open_{}'.format(self.length)].height()
 
-        self.configure(command=self.press,
-                       width=self.width,
+        self.configure(width=self.width,
                        height=self.height,
                        relief=tk.FLAT,
                        bd=0,
@@ -310,6 +316,13 @@ class Switch(tk.Button):
 
         self.value = 0
         self.off_state()
+
+        if connection is None:
+            self.connections = None
+            self.bind('<Button-1>', lambda e: self.press(e))
+        else:
+            self.connections = self.make_connections(connection)
+            self.bind('<Button-1>', lambda e: self.press(e))
 
         # # TODO Add a char to the button to show its keybinding
         # # As far as I can tell, compound=tk.CENTER is the only choice
@@ -332,11 +345,24 @@ class Switch(tk.Button):
         self.configure(image=images['switch_closed_{}'.format(self.length)],
                        relief=tk.FLAT)
 
-    def press(self):
+    def press(self, event):
         if self.value == 0:
             self.on_state()
+            if self.connections is not None:
+                for button in self.connections:
+                    button.on_state()
         else:
             self.off_state()
+            if self.connections is not None:
+                for button in self.connections:
+                    button.off_state()
+
+    def make_connections(self, connection):
+        textbuttons = [v for k, v in connection.children.items()
+                       if '!textbutton' in k]
+        for button in textbuttons:
+            button.change_connection(self)
+        return textbuttons
 
     def generate_images(self):
         try:
