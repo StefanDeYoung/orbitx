@@ -65,7 +65,37 @@ class ENGLabelFrame(tk.LabelFrame):
         super().__init__(parent, text=text, font=font, fg=style.text, bg=style.bg)
 
 
-class TextButton(tk.Button):
+class ENGButton(tk.Button):
+    """
+    A master class for specialised buttons
+    """
+
+    def __init__(self, parent, style=Style('default'), *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.style = style
+        self.value = 0
+        self.configure(bg=style.bg,
+                       fg=style.text,
+                       font=style.normal,
+                       command=self.press)
+
+        # Allows for button width, height to be specified in px
+        self.px_img = tk.PhotoImage(width=1, height=1)
+
+    def off_state(self):
+        self.value = 0
+
+    def on_state(self):
+        self.value = 1
+
+    def press(self):
+        if self.value:
+            self.off_state()
+        else:
+            self.on_state()
+
+
+class TextButton(ENGButton):
     """
     Represents an flat button on the e-grid.
     E.g. ion1 = TextButton(parent, text='RAD')
@@ -73,24 +103,19 @@ class TextButton(tk.Button):
 
     def __init__(self, parent, connected: bool = False,
                  style=Style('default'), *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent, style=style, *args, **kwargs)
 
         self.configure(font=style.small,
-                       relief=tk.FLAT,
-                       bg=style.bg,
-                       fg=style.text)
+                       relief=tk.FLAT)
 
-        if not connected:
-            self.bind('<Button-1>', lambda e: self.press(e))
-        else:
-            self.connection = self.master
-            self.bind('<Button-1>', lambda e: self.switch(e))
-
-        self.style = style
-        self.value = 0
+        if connected:
+            self.connection = self
+            self.linked_buttons = [self]
 
     def change_connection(self, connection):
         self.connection = connection
+        self.linked_buttons = [v for k, v in self.master.children.items()
+                               if '!textbutton' in k]
 
     def off_state(self):
         self.value = 0
@@ -100,80 +125,61 @@ class TextButton(tk.Button):
         self.value = 1
         self.configure(fg=self.style.sw_on)
 
-    def press(self, event):
-        if self.value == 0:
-            self.on_state()
-        else:
+    def press(self):
+        if self.value:
             self.off_state()
-
-    def switch(self, event):
-        self.press(event)
-        textbuttons = [v.value for k, v in event.widget.master.children.items()
-                       if '!textbutton' in k]
-        if any(textbuttons):
+        else:
+            self.on_state()
+        if any([button.value for button in self.linked_buttons]):
             self.connection.on_state()
         else:
             self.connection.off_state()
 
 
-class Indicator(tk.Button):
+class Indicator(ENGButton):
     """
     Represents an indicator light/toggle push-button switch.
     E.g. radar = Indicator(parent, text='RAD')
     """
 
     def __init__(self, parent, style=Style('default'), *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
-
-        # Allows for button width, height to be specified in px
-        self.px_img = tk.PhotoImage(width=1, height=1)
+        super().__init__(parent, style=style, *args, **kwargs)
 
         self.configure(image=self.px_img,
                        compound='c',
                        width=50,
                        height=50,
-                       command=self.press,
-                       font=style.normal
-                       )
+                       fg=self.style.bg)
 
-        self.style = style
-        self.value = 1    # Will be set to 0, on next line
-        self.invoke()
+        self.off_state()
 
-    def press(self):
-        if self.value == 0:
-            self.value = 1
-            self.configure(relief=tk.RAISED, bg=self.style.ind_on)
-        else:
-            self.value = 0
-            self.configure(relief=tk.SUNKEN, bg=self.style.ind_off)
+    def off_state(self):
+        self.value = 0
+        self.configure(relief=tk.SUNKEN, bg=self.style.ind_off)
+
+    def on_state(self):
+        self.value = 1
+        self.configure(relief=tk.RAISED, bg=self.style.ind_on)
 
 
-class OneTimeButton(tk.Button):
+class OneTimeButton(ENGButton):
     """
     A button, which can only be pressed once.
     """
 
     def __init__(self, parent, style=Style('default'), *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
-
-        # Allows for button width, height to be specified in px
-        self.px_img = tk.PhotoImage(width=1, height=1)
+        super().__init__(parent, style=style, *args, **kwargs)
 
         self.configure(image=self.px_img,
                        compound='c',
                        width=100,
                        height=40,
-                       font=style.normal,
                        relief=tk.RIDGE,
-                       bg=style.otb_unused,
-                       command=self.press
+                       bg=self.style.otb_unused,
+                       fg=self.style.bg
                        )
 
-        self.value = 0
-        self.style = style
-
-    def press(self):
+    def on_state(self):
         self.value = 1
         self.configure(state=tk.DISABLED,
                        relief=tk.FLAT,
@@ -182,7 +188,7 @@ class OneTimeButton(tk.Button):
                        )
 
 
-class Alert(tk.Button):
+class Alert(ENGButton):
     """
     Stays flat and gray until alerted. Then it flashes, until clicked.
     When clicked, the button should be flat, deactivated, and red, and
@@ -193,24 +199,17 @@ class Alert(tk.Button):
 
     def __init__(self, parent, invis: bool = False, counter: int = None,
                  style=Style('default'), *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
+        super().__init__(parent, style=style, *args, **kwargs)
 
-        self.style = style
-
-        # Allows for button width, height to be specified in px
-        self.px_img = tk.PhotoImage(width=1, height=1)
         self.configure(image=self.px_img,
                        compound='c',
                        width=80,
                        height=35,
-                       font=style.normal,
                        state=tk.DISABLED,
                        command=self.quiet
                        )
-        self.alerted = 0
         self.normal_state()
 
-        # Invis doesn't seem to work?
         if invis:
             self.configure(disabledforeground=self.style.bg)
 
@@ -222,34 +221,31 @@ class Alert(tk.Button):
         self.duty_cycle = 0.7
 
     def alert(self):
-        self.alerted = 1
-        # print('ALERT')
+        self.value = 1
         self.alerted_state()
 
     def alerted_state(self):
-        # print('Alerted State')
         self.configure(relief=tk.RAISED,
                        bg=self.style.alert_bg,
                        fg=self.style.alert_text,
                        state=tk.NORMAL)
-        if self.alerted:
+        if self.value:
             self.event = self.after(int(self.duty_cycle * self.flash_period),
                                     lambda: self.normal_state())
 
     def normal_state(self):
-        # print('Normal State', self.value==True)
         self.configure(relief=tk.FLAT,
                        bg=self.style.bg,
                        fg=self.style.text
                        )
-        if self.alerted:
+        if self.value:
             self.event = self.after(int((1-self.duty_cycle)*self.flash_period),
                                     lambda: self.alerted_state())
 
     def quiet(self):
         # Stop flashing, but stay alerted
         self.after_cancel(self.event)
-        self.alerted = False
+        self.value = 0
         self.alerted_state()
         self.configure(state=tk.DISABLED, relief=tk.GROOVE)
 
@@ -278,7 +274,7 @@ class ENGScale(tk.Scale):
         self.label.update()
 
 
-class Switch(tk.Button):
+class Switch(ENGButton):
     """
     A pipe that shows electrical connections between elements of the
     power grid.
@@ -291,9 +287,7 @@ class Switch(tk.Button):
     def __init__(self, parent, length: str = '1h', style=Style('default'),
                  connection: Optional[tk.Widget] = None,
                  *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
-
-        self.style = style
+        super().__init__(parent, style=style, *args, **kwargs)
 
         assert int(length[0]) % 2 == 1  # Length must be odd
         assert length[1] == 'h' or length[1] == 'v'
@@ -313,16 +307,12 @@ class Switch(tk.Button):
                        highlightthickness=0,
                        highlightcolor=style.bg
                        )
-
-        self.value = 0
         self.off_state()
 
         if connection is None:
             self.connections = None
-            self.bind('<Button-1>', lambda e: self.press(e))
         else:
             self.connections = self.make_connections(connection)
-            self.bind('<Button-1>', lambda e: self.press(e))
 
         # # TODO Add a char to the button to show its keybinding
         # # As far as I can tell, compound=tk.CENTER is the only choice
@@ -345,7 +335,7 @@ class Switch(tk.Button):
         self.configure(image=images['switch_closed_{}'.format(self.length)],
                        relief=tk.FLAT)
 
-    def press(self, event):
+    def press(self):
         if self.value == 0:
             self.on_state()
             if self.connections is not None:
@@ -421,7 +411,7 @@ class Switch(tk.Button):
             ImageTk.PhotoImage(sw_on)
 
 
-class Enabler(tk.Button):
+class Enabler(ENGButton):
     """
     A button that controls whether another button or component can be
     interacted with.
@@ -433,10 +423,9 @@ class Enabler(tk.Button):
 
     def __init__(self, parent, enables: tk.Widget, style=Style('default'),
                  *args, **kwargs):
-        super().__init__(parent)
+        super().__init__(parent, style=style)
 
         self.enables = enables
-        self.style = style
 
         if not ('enabler_unarmed' in images):
             self.generate_images()
@@ -453,8 +442,6 @@ class Enabler(tk.Button):
                        highlightthickness=0,
                        highlightcolor=style.bg
                        )
-
-        self.value = 0
         self.off_state()
 
         # # TODO Add a char to the button to show its keybinding
@@ -478,12 +465,6 @@ class Enabler(tk.Button):
         self.value = 1
         self.configure(image=images['enabler_armed'])
         self.enables.configure(state=tk.NORMAL)
-
-    def press(self):
-        if self.value == 0:
-            self.on_state()
-        else:
-            self.off_state()
 
     def generate_images(self):
         try:
