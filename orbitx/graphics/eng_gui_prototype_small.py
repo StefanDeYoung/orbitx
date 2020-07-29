@@ -160,11 +160,6 @@ class EGrid(tk.Frame):
         widgets['sw_mid_bot'].grid(row=2, column=2)
         bot_object.grid(row=3, column=2, padx=5, pady=2)
 
-        # for i in range(4):
-        #     name = 'ION{}'.format(i+1)
-        #     widgets[name].change_connection(widgets['sw_engines'])
-
-
 class Subsystems(tk.Frame):
 
     def __init__(self, parent):
@@ -230,6 +225,6 @@ def update_test():
 # MAIN
 app = MainApplication()    # Essential. Do not remove.
 app.bind_all('<Key>', lambda e: keybinds(e))
-# widgets[A_ASTEROID].alert()
+widgets[A_ASTEROID].alert()
 # app.after(1000, update_test())
 app.mainloop()    # Essential. Do not remove.

@@ -1,3 +1,3 @@
-def keybinds(event):
-    if event.char == 'b':
-        event.widget.invoke()
+keybinding = {'i': 'INS',
+              'c': 'CHUTE',
+              's': 'SRB'}

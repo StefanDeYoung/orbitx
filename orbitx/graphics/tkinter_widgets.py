@@ -62,7 +62,8 @@ class ENGLabelFrame(tk.LabelFrame):
 
     def __init__(self, parent: tk.Widget, text: str, style=Style('default')):
         font = style.normal
-        super().__init__(parent, text=text, font=font, fg=style.text, bg=style.bg)
+        super().__init__(parent, text=text,
+                         font=style.normal, fg=style.text, bg=style.bg)
 
 
 class ENGButton(tk.Button):
@@ -147,8 +148,8 @@ class Indicator(ENGButton):
 
         self.configure(image=self.px_img,
                        compound='c',
-                       width=50,
-                       height=50,
+                       width=40,
+                       height=40,
                        fg=self.style.bg)
 
         self.off_state()
@@ -172,8 +173,8 @@ class OneTimeButton(ENGButton):
 
         self.configure(image=self.px_img,
                        compound='c',
-                       width=100,
-                       height=40,
+                       width=60,
+                       height=30,
                        relief=tk.RIDGE,
                        bg=self.style.otb_unused,
                        fg=self.style.bg
@@ -204,7 +205,7 @@ class Alert(ENGButton):
         self.configure(image=self.px_img,
                        compound='c',
                        width=80,
-                       height=35,
+                       height=20,
                        state=tk.DISABLED,
                        command=self.quiet
                        )

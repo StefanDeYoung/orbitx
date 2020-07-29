@@ -1,23 +1,63 @@
 import tkinter as tk
 import orbitx.graphics.tkinter_widgets as cw
-from orbitx.graphics.eng_keybinds import keybinds
+from orbitx.graphics.eng_keybinds import keybinding
+from orbitx.strings import *
 from PIL import Image, ImageTk
 
 
-# Main widget dictionary holds all objects in the gui
+def keybinds(event):
+    try:
+        widgets[keybinding[event.char]].invoke()
+    except KeyError:
+        print('key does not correspond to a widget')
+
+
+class ENGComponent:
+    """
+    self.widgets is a dict that contains pointers to each label that displays
+    the values of the ENGComponent.
+
+    Instantiate all of the ENGComponents at the top of the script, then
+    after creating widget, add a pointer to it in components[ENGComponent.name]
+
+    eg.
+    voltage_label = cw.ENGLabel(parent, text = 'V', value=999, unit='kV')
+    components[ENGComponent.name]['V'].append(voltage_label)
+    """
+    def __init__(self, name):
+        self.name = name
+
+        self.values = {'V': 'V',
+                       'R': 'R',
+                       'I': 'I',
+                       'P': 'P',
+                       'T': 'T',
+                       'CL': 'CL'
+                       }
+
+        # Characteristics
+        # V/I curve
+        # R/T curve
+
+        # Representations
+        # Voltage, Resistance, Current, Power, Temperature, Coolant Loop
+        self.widgets = {'V': [], 'R': [], 'I': [], 'P': [], 'T': [], 'CL': []}
+
+    def update_widgets(self):
+        for k, v in self.widgets.items():
+            for w in v:
+                w.update_value(self.values[k])
+
+
+# Main widget dictionary holds all buttons
 widgets = {}
+
+components = {}
+for c in COMPONENT_NAMES:
+    components[c] = ENGComponent(name=c)
 
 # Python garbage collection deletes ImageTk images, unless you save them
 images = {}
-
-# Radiator States
-ISOLATED = 'ISOL'
-BROKEN = 'BRKN'
-STOWED = 'STWD'
-LOOP1 = 'HLP1'
-LOOP2 = 'HLP2'
-LOOP3 = 'ALP3'
-BOTH = 'BOTH'
 
 style = cw.Style('flat')
 
@@ -32,7 +72,8 @@ class MainApplication(tk.Tk):
         super().__init__()
 
         tk.Tk.wm_title(self, "OrbitX Engineering")
-        self.geometry("1000x900")
+        self.geometry("800x600")
+        #self.geometry("1920x1080")
 
         # Create menubar
         menubar = self._create_menu()
@@ -40,13 +81,12 @@ class MainApplication(tk.Tk):
 
         # Initialise main page
         self.page = HabPage(self)
-        self.page.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+        self.page.grid()
 
     def _create_menu(self):
         menubar = tk.Menu(self)
 
         file = tk.Menu(menubar, tearoff=0)
-        # file.add_command(label="Item1")
         file.add_command(label="Exit", command=quit)
         menubar.add_cascade(label="File", menu=file)
 
@@ -63,354 +103,412 @@ class HabPage(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
 
-        # Divide the page into two columns
-        self.left_frame = tk.Frame(self, bg=style.bg)
+        self.configure(bg=style.bg)
 
-        # If Red, Blue, Yellow, or Gray are showing through
-        # something has gone wrong
-        right_frame = tk.Frame(self, bg="red")
-        self.right_frame_top = tk.Frame(right_frame, bg="blue")
-        self.right_frame_mid = tk.Frame(right_frame, bg="yellow")
-        self.right_frame_bot = tk.Frame(right_frame, bg="gray")
+        # ----------------  Overall Page Organisation ----------------
+        master_ctrl = cw.ENGLabelFrame(self, text='MASTER', style=style)
+        fuel_ctrl = cw.ENGLabelFrame(self, text='ENGINE', style=style)
+        subsystem_ctrl = cw.ENGLabelFrame(self, text='SUBSYSTEM', style=style)
+        e_grid = cw.ENGLabelFrame(self, text='EGRID', style=style)
+        coolant_ctrl = cw.ENGLabelFrame(self, text='COOLANT', style=style)
+        reactor_ctrl = cw.ENGLabelFrame(self, text='REACTOR', style=style)
+        radiator_ctrl = cw.ENGLabelFrame(self, text='RADIATOR', style=style)
 
-        # Pack the two columns
-        self.left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False)
-        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-        self.right_frame_top.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        self.right_frame_mid.pack(side=tk.TOP, fill=tk.BOTH, expand=False)
-        self.right_frame_bot.pack(side=tk.TOP, fill=tk.BOTH, expand=False)
+        master_ctrl.grid(row=0, column=0, sticky=tk.NSEW, padx=5, pady=5)
+        fuel_ctrl.grid(row=1, column=0, sticky=tk.NSEW, padx=5, pady=5)
+        subsystem_ctrl.grid(row=2, column=0, sticky=tk.NSEW, padx=5)
+        e_grid.grid(row=0, column=1, rowspan=2, columnspan=3, sticky=tk.NSEW)
+        reactor_ctrl.grid(row=2, column=1,sticky=tk.NSEW, padx=2)
+        coolant_ctrl.grid(row=2, column=2, sticky=tk.NSEW, padx=2)
+        radiator_ctrl.grid(row=2, column=3, sticky=tk.NSEW, padx=2)
 
-        self.left_frame.pack_configure()
+        # ---------------- Master ctrl ----------------
+        top_frame = tk.Frame(master_ctrl, bg=style.bg)
+        bot_frame = tk.Frame(master_ctrl, bg=style.bg)
+        top_frame.grid(row=0, column=0)
+        bot_frame.grid(row=2, column=0)
 
-        # Add objects to the columns
-        self._render_left()
-        self._render_right_top()
-        self._render_right_mid()
-        self._render_right_bot()
-
-    def _render_left(self):
-        # Master
-        master = cw.ENGLabelFrame(self.left_frame, text="Master", style=style)
-        master.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-        widgets['master_freeze'] = cw.Indicator(master,
-                                                text='Freeze\nControls',
+        widgets['master_freeze'] = cw.Indicator(top_frame,
+                                                text='Freeze\nConsole',
                                                 style=style)
-        widgets['master_freeze'].configure(width=60, height=60)
+        widgets['master_freeze'].configure(width=55, height=50)
+        widgets['CRAFT_SELECT'] = tk.Spinbox(
+            top_frame, width=7, bg=style.bg, fg=style.text, font=style.large,
+            values=(HABITAT, AYSE), wrap=True)
 
-        widgets['a_master'] = cw.Alert(master, text='MASTER\nALARM',
+        widgets['master_freeze'].grid(row=0, column=0, padx=(25, 5),
+                                      pady=(5, 0))
+        widgets['CRAFT_SELECT'].grid(row=0, column=1, padx=5)
+
+        widgets['a_master'] = cw.Alert(bot_frame, text='MASTER\nALARM',
                                        font=style.large, style=style)
-        widgets['a_master'].configure(width=100, height=100)
-
-        widgets['a_asteroid'] = cw.Alert(master, text='ASTEROID',
+        widgets['a_master'].configure(height=40)
+        widgets['a_asteroid'] = cw.Alert(bot_frame, text='ASTEROID',
                                          style=style)
-        widgets['a_radiation'] = cw.Alert(master, text='RADIATION',
+        widgets['a_radiation'] = cw.Alert(bot_frame, text='RADIATION',
                                           style=style)
-        widgets['a_hab_gnomes'] = cw.Alert(master, text='HAB\nGNOMES',
-                                           style=style)
 
-        widgets['master_freeze'].grid(row=0, column=0)
+        widgets['a_asteroid'].grid(row=0, column=0, padx=5, sticky=tk.S,
+                                   pady=(5, 0))
+        widgets['a_radiation'].grid(row=1, column=0, padx=5, sticky=tk.N)
+
         widgets['a_master'].grid(row=0, column=1, rowspan=2)
-        widgets['a_asteroid'].grid(row=2, column=0, padx=5, pady=5)
-        widgets['a_radiation'].grid(row=2, column=1, padx=5, pady=5)
-        widgets['a_hab_gnomes'].grid(row=3, column=0, pady=5)
 
-        # Engines
-        engines = cw.ENGLabelFrame(self.left_frame, text="Engines",
-                                   style=style)
-        engines.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        # ---------------- Fuel ctrl ----------------
+        widgets[INJ1] = cw.Indicator(fuel_ctrl, text=INJ1, style=style)
+        widgets[INJ2] = cw.Indicator(fuel_ctrl, text=INJ2, style=style)
 
-        widgets['h_INJ1'] = cw.Indicator(engines, text="INJ-1", style=style)
-        widgets['h_INJ2'] = cw.Indicator(engines, text="INJ-2", style=style)
-        widgets["fuel"] = cw.ENGLabel(engines, text='FUEL', value=0, unit='kg',
-                                      style=style)
-        widgets['h_br'] = cw.ENGLabel(engines, text='BURN RATE',
-                                      value=0, unit='kg/hr', style=style)
+        fuel = tk.Frame(fuel_ctrl, bg=style.bg)
+        fuel_label = tk.Label(fuel, text='FUEL',
+                              bg=style.bg, fg=style.text, font=style.normal)
+        widgets['HAB_FUEL'] = cw.ENGLabel(fuel, text='HAB', value=999,
+                                          unit='kg', style=style)
+        widgets['HAB_FUEL'].configure(font=style.small)
+        widgets['AYSE_FUEL'] = cw.ENGLabel(fuel, text='AYSE', value=999,
+                                          unit='kg', style=style)
+        widgets['AYSE_FUEL'].configure(font=style.small)
 
-        widgets['h_INJ1'].grid(row=0, column=0)
-        widgets['h_INJ2'].grid(row=1, column=0)
-        widgets['fuel'].grid(row=0, column=1, sticky=tk.W)
-        widgets['h_br'].grid(row=1, column=1, sticky=tk.W)
+        burn = tk.Frame(fuel_ctrl, bg=style.bg)
+        burn_label = tk.Label(burn, text='BURN\nRATE',
+                              bg=style.bg, fg=style.text, font=style.normal)
+        widgets['HAB_BURN'] = cw.ENGLabel(burn, text='HAB', value=999,
+                                          unit='kg/h', style=style)
+        widgets['HAB_BURN'].configure(font=style.small)
+        widgets['AYSE_BURN'] = cw.ENGLabel(burn, text='AYSE', value=999,
+                                           unit='kg/h', style=style)
+        widgets['AYSE_BURN'].configure(font=style.small)
 
-        # Engines > Fuel Management
-
-        fuelmanager = cw.ENGLabelFrame(engines, text="", style=style)
-        fuelmanager.grid(row=2, column=0, columnspan=2, pady=5)
-
-        widgets['a_fuel_connected'] = cw.Alert(fuelmanager, text='TETHERED',
-                                               style=style)
-        widgets['h_load'] = cw.Indicator(fuelmanager, text="LOAD",
-                                         style=style)
-        widgets['h_dump'] = cw.Indicator(fuelmanager, text="DUMP",
-                                         style=style)
-
-        widgets['a_fuel_connected'].grid(row=0, column=0, padx=10)
-        widgets['h_dump'].grid(row=0, column=1)
-        widgets['h_load'].grid(row=0, column=2)
-
-        # Subsystems
-        subsystems = cw.ENGLabelFrame(self.left_frame, text="Subsystems",
-                                      style=style)
-        subsystems.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-        widgets['INS'] = cw.Indicator(subsystems, text='INS', style=style)
-        widgets['RADAR'] = cw.Indicator(subsystems, text='RAD', style=style)
-        widgets['LOS'] = cw.Indicator(subsystems, text='LOS', style=style)
-        widgets['GNC'] = cw.Indicator(subsystems, text='GNC', style=style)
-        widgets['a_ATMO'] = cw.Alert(subsystems, text='IN ATMO', style=style)
-        widgets['CHUTE'] = cw.OneTimeButton(subsystems, text='CHUTE',
-                                            style=style)
-        widgets['a_SRBTIME'] = cw.Alert(subsystems, text='120s', invis=True,
-                                        style=style)
-
-        widgets['SRB'] = cw.OneTimeButton(subsystems, text='SRB', style=style)
-        #widgets['SRB'].bind_all('s', lambda x: widgets['SRB'].press())
-        widgets['SRB'].bind_all('<Key>', lambda e: keybinds(e))
-
-        widgets['INS'].grid(row=0, column=0)
-        widgets['RADAR'].grid(row=1, column=0)
-        widgets['LOS'].grid(row=2, column=0)
-        widgets['GNC'].grid(row=3, column=0)
-        widgets['a_ATMO'].grid(row=0, column=1)
-        widgets['CHUTE'].grid(row=1, column=1)
-        widgets['SRB'].grid(row=2, column=1)
-        widgets['a_SRBTIME'].grid(row=3, column=1)
-
-        subsystems.grid_columnconfigure(0, weight=1, minsize=50)
-        subsystems.grid_columnconfigure(1, weight=1, minsize=60)
-
-    def _render_right_top(self):
-#        # Electrical Grid
-#        hegrid = cw.ENGLabelFrame(self.right_frame_top,
-#                                  text="Habitat Electrical Grid")
-#        hegrid.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-#
-#        widgets['he_grid'] = tk.Canvas(hegrid, width=750, height=350)
-#        widgets['he_grid'].pack()
-
-        # Method 1
-        # Draw all objects on a canvas including the switches
-        method1 = cw.ENGLabelFrame(self.right_frame_top, text="Method 1",
-                                   style=style)
-        method1.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        widgets['m1_he_grid'] = tk.Canvas(method1, width=375, height=350)
-        widgets['m1_he_grid'].pack(padx=5, pady=5)
-
-        # Method 2
-        # Draw the unactive parts as an image, and superimpose buttons
-        # and labels
-        method2 = cw.ENGLabelFrame(self.right_frame_top, text="Method 2",
-                                   style=style)
-        method2.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        images['ECS_bg'] = ImageTk.PhotoImage(Image.open(
-            "../../data/textures/eng_mockup.PNG").resize((375, 95)))
-        widgets['m2_he_grid'] = tk.Label(method2, image=images['ECS_bg'],
-                                         width=375, height=95)
-        widgets['m2_he_grid'].pack(padx=5, pady=5)
-
-        sw_width = 15
-        sw_height = 23
-        images['sw_open'] = ImageTk.PhotoImage(Image.open(
-            "../../data/textures/eng_switch_open.PNG").resize(
-            (sw_width, sw_height)))
-
-        images['sw_closed'] = ImageTk.PhotoImage(Image.open(
-            "../../data/textures/eng_switch_closed.PNG").resize(
-            (sw_width, sw_height)))
-
-        def switch(event):
-            event.widget.configure(image=images['sw_closed'])
-
-        widgets['sw_ln1'] = tk.Button(widgets['m2_he_grid'],
-                                      width=sw_width, height=sw_height,
-                                      image=images['sw_open'],
-                                      relief=tk.FLAT,
-                                      bd=0,
-                                      bg=style.bg)
-        widgets['sw_ln1'].place(x=125, y=35)
-
-        widgets['sw_ln1'].bind('<Button-1>', switch)
-        widgets['sw_ln1'].bind_all('a', switch)
-
-        def get_pos(event):
-            position_display.configure(
-                text='x = ' + str(event.x) + '  '
-                     'y = ' + str(event.y))
-
-        widgets['m2_he_grid'].bind('<Button-1>', get_pos)
-
-        position_display = tk.Label(method2)
-        position_display.pack()
-
-    def _render_right_mid(self):
-        # Coolant Loops
-        loops = cw.ENGLabelFrame(self.right_frame_mid, text="", style=style)
-        loops.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        for cl in range(2):
-            prefix = 'hl{}_'.format(cl+1)
-            loop = cw.ENGLabelFrame(loops, text='Coolant Loop {}'.format(cl+1),
-                                    style=style)
-            loop.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-            widgets[prefix + 'pump'] = cw.ENGLabel(loop, text='PUMP',
-                                                   value=96, unit='%',
-                                                   style=style)
-            widgets[prefix + 'pump_sldr'] = cw.ENGScale(
-                loop, widgets[prefix + 'pump'], style=style)
-            widgets[prefix + 'temp'] = cw.ENGLabel(
-                loop, text='TEMP', value=47, unit='*C', style=style)
-
-            widgets[prefix + 'pump'].grid(row=0, column=0)
-            widgets[prefix + 'pump_sldr'].grid(row=0, column=1,
-                                               rowspan=2, columnspan=2)
-            widgets[prefix + 'temp'].grid(row=1, column=0, pady=5)
-
-            for i in range(2):
-                for j in range(3):
-                    rad = 'R{}'.format(i * 3 + j + 1)
-                    widgets[prefix + rad] = cw.Indicator(loop, text=rad,
-                                                         style=style)
-                    widgets[prefix + rad].grid(row=i+2, column=j, sticky=tk.E)
-
-        # Radiators
-        radiators = cw.ENGLabelFrame(self.right_frame_mid, text="Radiators",
+        fuel_management = tk.Frame(fuel_ctrl, bg=style.bg)
+        widgets[A_DOCKED] = cw.Alert(fuel_management, text=A_DOCKED,
+                                       style=style)
+        widgets[LOAD] = cw.Indicator(fuel_management, text=LOAD,
                                      style=style)
-        radiators.pack(side=tk.LEFT, fill=tk.BOTH, expand=False)
+        widgets[DUMP] = cw.Indicator(fuel_management, text=DUMP,
+                                     style=style)
 
-        for i in range(6):
+        # columnwise
+        widgets[INJ1].grid(row=0, column=0, padx=(5, 0), pady=(5, 0))
+        fuel.grid(row=0, column=1)
+        widgets[INJ2].grid(row=1, column=0, padx=(5, 0))
+        burn.grid(row=1, column=1)
+        fuel_management.grid(row=2, column=0, columnspan=2)
+
+        fuel_label.grid(row=0, column=0, rowspan=2)
+        widgets['HAB_FUEL'].grid(row=0, column=1, sticky=tk.W)
+        widgets['AYSE_FUEL'].grid(row=1, column=1, sticky=tk.W)
+
+        burn_label.grid(row=0, column=0, rowspan=2)
+        widgets['HAB_BURN'].grid(row=0, column=1, sticky=tk.W)
+        widgets['AYSE_BURN'].grid(row=1, column=1, sticky=tk.W)
+
+        widgets[A_DOCKED].grid(row=0, column=0)
+        widgets[LOAD].grid(row=0, column=1)
+        widgets[DUMP].grid(row=0, column=2)
+
+        # ---------------- Subsystems ----------------
+        widgets[INS] = cw.Indicator(subsystem_ctrl, text=INS, style=style)
+        widgets[RADAR] = cw.Indicator(subsystem_ctrl, text=RADAR, style=style)
+        widgets[LOS] = cw.Indicator(subsystem_ctrl, text=LOS, style=style)
+        widgets[GNC] = cw.Indicator(subsystem_ctrl, text=GNC, style=style)
+        widgets[A_ATMO] = cw.Alert(subsystem_ctrl, text=A_ATMO, style=style)
+        widgets[CHUTE] = cw.OneTimeButton(subsystem_ctrl, text=CHUTE,
+                                          style=style)
+        widgets[SRB] = cw.OneTimeButton(subsystem_ctrl, text=SRB, style=style)
+        widgets['arm_SRB'] = cw.Enabler(subsystem_ctrl, enables=widgets['SRB'],
+                                        style=style)
+        widgets['a_SRBTIME'] = cw.Alert(subsystem_ctrl, text='120s',
+                                        invis=False, style=style)
+        widgets['a_SRBTIME'].configure(width=30)
+        widgets['DOCK'] = cw.OneTimeButton(subsystem_ctrl, text='LATCH',
+                                           style=style)
+        widgets['arm_DOCK'] = cw.Enabler(subsystem_ctrl,
+                                         enables=widgets['DOCK'], style=style)
+
+        widgets[INS].grid(row=0, column=0, padx=(5, 0), pady=(5, 0))
+        widgets[RADAR].grid(row=1, column=0, padx=(5, 0))
+        widgets[LOS].grid(row=2, column=0, padx=(5, 0))
+        widgets[GNC].grid(row=3, column=0, padx=(5, 0))
+        widgets[A_ATMO].grid(row=0, column=1)
+        widgets[CHUTE].grid(row=1, column=1)
+        widgets['SRB'].grid(row=2, column=1)
+        widgets['DOCK'].grid(row=3, column=1)
+        widgets['a_SRBTIME'].grid(row=0, column=2)
+        widgets['arm_SRB'].grid(row=2, column=2, sticky=tk.W)
+        widgets['arm_DOCK'].grid(row=3, column=2, sticky=tk.W)
+
+        # ---------------- EGrid ----------------
+        # First instantiate widgets, and grid them relative to their containers
+        # Then instantiate one-of widgets
+        # Then instantiate switches
+        # Then grid everything
+        # Engines + Power Lines
+        engines = {}
+        for e in ['ION', 'ACC', 'GPD']:
+            engines[e] = tk.Frame(e_grid, bg=style.bg, bd=2, relief=tk.RIDGE)
+            for i in range(4):
+                name = '{}{}'.format(e, i+1)
+                widgets[name] = cw.TextButton(engines[e], text=name,
+                                              connected=True, style=style)
+                temperature = cw.ENGLabel(engines[e], text='T', value=60,
+                                          style=style, small=True)
+                coolant_loop = cw.ENGLabel(engines[e], text='L', value=1,
+                                           style=style, small=True)
+
+                # Render relative to container; container rendered later
+                widgets[name].grid(row=i, column=0, sticky=tk.W)
+                temperature.grid(row=i, column=1)
+                coolant_loop.grid(row=i, column=2)
+
+                # Store pointer to representation
+                components[name].widgets['T'].append(temperature)
+                components[name].widgets['CL'].append(coolant_loop)
+
+                # Render relative to container; container rendered later
+                widgets[name].grid(row=i, column=0, sticky=tk.W)
+                temperature.grid(row=i, column=1)
+                coolant_loop.grid(row=i, column=2)
+
+                # Store pointer to representation
+                components[name].widgets['T'].append(temperature)
+                components[name].widgets['CL'].append(coolant_loop)
+
+        # Power Busses
+        busses = {}
+        for b in [BUS1, BUS2, BUS3, BUSA]:
+            busses[b] = tk.Frame(e_grid, bg=style.bg, bd=2, relief=tk.RIDGE)
+            label = tk.Label(busses[b], text=b,
+                             bg=style.bg, fg=style.text, font=style.normal)
+            power = cw.ENGLabel(busses[b], text='', value=60, unit='kW',
+                                style=style)
+            power.configure(fg=style.ind_on, font=style.small)
+            current = cw.ENGLabel(busses[b], text='', value=6.0, unit='A',
+                                  style=style)
+            current.configure(fg=style.ind_on, font=style.small)
+            voltage = cw.ENGLabel(busses[b], text='', value=10.0, unit='kV',
+                                  style=style)
+            voltage.configure(fg=style.ind_on, font=style.small)
+
+            # Render labels relative to container; container rendered with switches
+            label.grid(row=0, column=0, sticky=tk.W)
+            power.grid(row=1, column=0, sticky=tk.W)
+            current.grid(row=2, column=0, sticky=tk.W)
+            voltage.grid(row=3, column=0, sticky=tk.W)
+
+            # Store pointer to representation
+            components[b].widgets['P'].append(power)
+            components[b].widgets['I'].append(current)
+            components[b].widgets['V'].append(voltage)
+
+        # Reactors
+        reactors = {}
+        for r in [HAB_REACT, AYSE_REACT]:
+            reactors[r] = tk.Frame(e_grid, bg=style.bg, bd=2, relief=tk.RIDGE)
+            label = tk.Label(reactors[r], text=r,
+                             bg=style.bg, fg=style.text, font=style.normal)
+            current = cw.ENGLabel(reactors[r], text='', value=99, unit='A',
+                                style=style)
+            temperature = cw.ENGLabel(reactors[r], text='', value=99, unit='*C',
+                                  style=style)
+
+            label.grid(row=0, column=0, sticky=tk.W)
+            current.grid(row=1, column=0, sticky=tk.W)
+            temperature.grid(row=2, column=0, sticky=tk.W)
+
+            components[r].widgets['I'].append(current)
+            components[r].widgets['T'].append(temperature)
+
+        # One-of Widgets
+        widgets[RADS_BATT] = tk.Label(e_grid, text='100%', font=style.small,
+                                      bg=style.bg, fg=style.text)
+        widgets[RADS1] = cw.TextButton(e_grid, text=RADS1, style=style)
+        widgets[RADS2] = cw.TextButton(e_grid, text=RADS2, style=style)
+        widgets[RCON_BATT] = tk.Label(e_grid, text='2000 As', font=style.small,
+                                      bg=style.bg, fg=style.text)
+        widgets[RCON1] = cw.TextButton(e_grid, text=RCON1, style=style)
+        widgets[RCON2] = cw.TextButton(e_grid, text=RCON2, style=style)
+
+        # Create Switches
+        widgets['sw_RADS1'] = cw.Switch(e_grid, length='1h', style=style)
+        widgets['sw_RADS2'] = cw.Switch(e_grid, length='1h', style=style)
+        widgets['sw_RCON1'] = cw.Switch(e_grid, length='1h', style=style)
+        widgets['sw_RCON2'] = cw.Switch(e_grid, length='1h', style=style)
+        widgets['sw_ions'] = cw.Switch(
+            e_grid, length='3v', style=style, connection=engines['ION'])
+        widgets['sw_acc'] = cw.Switch(
+            e_grid, length='3v', style=style, connection=engines['ACC'])
+        widgets['sw_gpd'] = cw.Switch(
+            e_grid, length='3v', style=style, connection=engines['GPD'])
+        widgets['sw_habr'] = cw.Switch(e_grid, length='1v', style=style)
+
+        # Render EGrid
+        engines['ION'].grid(row=0, column=3)
+        engines['ACC'].grid(row=0, column=5)
+        engines['GPD'].grid(row=0, column=14)
+
+        widgets['sw_ions'].grid(row=1, column=3, rowspan=2)
+        widgets['sw_acc'].grid(row=1, column=5, rowspan=2)
+        widgets['sw_gpd'].grid(row=1, column=14, rowspan=2)
+
+        widgets[RADS_BATT].grid(row=3, column=0, rowspan=2)
+        widgets[RADS1].grid(row=3, column=1)
+        widgets['sw_RADS1'].grid(row=3, column=2)
+        widgets[RADS2].grid(row=4, column=1)
+        widgets['sw_RADS2'].grid(row=4, column=2)
+        busses[BUS1].grid(row=3, column=3, rowspan=4, columnspan=3)
+        busses[BUSA].grid(row=3, column=14, rowspan=4, columnspan=3)
+
+        widgets[RCON_BATT].grid(row=5, column=0, rowspan=2)
+        widgets[RCON1].grid(row=5, column=1)
+        widgets['sw_RCON1'].grid(row=5, column=2)
+        widgets[RCON2].grid(row=6, column=1)
+        widgets['sw_RCON2'].grid(row=6, column=2)
+
+        widgets['sw_habr'].grid(row=7, column=3)
+        reactors[HAB_REACT].grid(row=8, column=3, rowspan=3, columnspan=2)
+        busses[BUS2].grid(row=8, column=7, rowspan=3, columnspan=2)
+        busses[BUS3].grid(row=8, column=11, rowspan=3, columnspan=2)
+        reactors[AYSE_REACT].grid(row=8, column=14, rowspan=3, columnspan=2)
+
+        # ---------------- Coolant Loops ----------------
+        loop1 = tk.Label(coolant_ctrl, text=LP1, font=style.normal,
+                         bg=style.bg, fg=style.text)
+        loop2 = tk.Label(coolant_ctrl, text=LP2, font=style.normal,
+                         bg=style.bg, fg=style.text)
+        pump = tk.Label(coolant_ctrl, text='PUMP', font=style.normal,
+                        bg=style.bg, fg=style.text)
+        temp = tk.Label(coolant_ctrl, text='TEMP', font=style.normal,
+                        bg=style.bg, fg=style.text)
+        widgets['PUMP1'] = tk.Spinbox(
+            coolant_ctrl, width=2, from_=0, to=100, increment=5,
+            bg=style.bg, fg=style.text, font=style.normal)
+        widgets['PUMP2'] = tk.Spinbox(
+            coolant_ctrl, width=2, from_=0, to=100, increment=5,
+            bg=style.bg, fg=style.text, font=style.normal)
+        temp1 = tk.Label(coolant_ctrl, text='99', font=style.normal,
+                         bg=style.bg, fg=style.text)
+        temp2 = tk.Label(coolant_ctrl, text='99', font=style.normal,
+                         bg=style.bg, fg=style.text)
+        widgets['CL_SELECT'] = tk.Spinbox(
+            coolant_ctrl, width=6, bg=style.bg, fg=style.text,
+            font=style.normal, values=(LP1, LP2), wrap=True)
+
+        radiators = tk.Frame(coolant_ctrl, bg=style.bg)
+        for i in range(2):
+            for j in range(3):
+                rad = 'R{}'.format(i * 3 + j + 1)
+                widgets[rad] = cw.Indicator(radiators, text=rad, style=style)
+                widgets[rad].grid(row=i+4, column=j, sticky=tk.E)
+
+        loop1.grid(row=1, column=0)
+        loop2.grid(row=2, column=0)
+        pump.grid(row=0, column=1)
+        widgets['PUMP1'].grid(row=1, column=1)
+        widgets['PUMP2'].grid(row=2, column=1)
+        temp.grid(row=0, column=2)
+        temp1.grid(row=1, column=2)
+        temp2.grid(row=2, column=2)
+        widgets['CL_SELECT'].grid(row=3, column=0, columnspan=3, pady=10)
+        radiators.grid(row=4, column=0, columnspan=3, pady=10)
+
+        components[LP1].widgets['T'].append(temp1)
+        components[LP2].widgets['T'].append(temp2)
+
+        # ---------------- Reactor Control ----------------
+        controls = tk.Frame(reactor_ctrl, bg=style.bg)
+        table = tk.Frame(reactor_ctrl, bg=style.bg)
+        graph_section = tk.Frame(reactor_ctrl, bg=style.bg)
+        controls.grid(row=0, column=0)
+        table.grid(row=0, column=1)
+        # graph_section.grid(row=1, column=0, columnspan=2)
+
+        widgets[REACT_INJ1] = cw.Indicator(controls, text=REACT_INJ1,
+                                           style=style)
+        widgets[REACT_INJ2] = cw.Indicator(controls, text=REACT_INJ2,
+                                           style=style)
+        widgets['hr_heater'] = cw.Indicator(controls, text="HEAT",
+                                            style=style)
+        widgets[RCON1] = cw.Indicator(controls, text=RCON1, style=style)
+        widgets[RCON2] = cw.Indicator(controls, text=RCON2, style=style)
+        widgets[A_OVERTEMP] = cw.Alert(controls, text='TEMP', style=style)
+
+        widgets[REACT_INJ1].grid(row=0, column=0, sticky=tk.E,
+                                 padx=(5, 0), pady=(5, 0))
+        widgets[REACT_INJ2].grid(row=1, column=0, sticky=tk.E)
+        widgets['hr_heater'].grid(row=2, column=0, sticky=tk.E)
+        widgets[RCON1].grid(row=0, column=1, sticky=tk.W, pady=(5, 0))
+        widgets[RCON2].grid(row=1, column=1, sticky=tk.W)
+        widgets[A_OVERTEMP].grid(row=2, column=1, sticky=tk.W)
+        # widgets[BAT].grid(row=2, column=2, columnspan=2)
+        # widgets[A_LOWBATT].grid(row=3, column=2, columnspan=2)
+
+        hab_label = tk.Label(table, text='HAB_R')
+        ayse_label = tk.Label(table, text='AYSE_R')
+        rcon1_label = tk.Label(table, text='RCON1')
+        rcon2_label = tk.Label(table, text='RCON2')
+        temp_label = tk.Label(table, text='TEMP')
+        curr_label = tk.Label(table, text='CURR')
+        habr_temp = tk.Label(table, text='99')
+        ayser_temp = tk.Label(table, text='99')
+        rcon1_temp = tk.Label(table, text='99')
+        rcon2_temp = tk.Label(table, text='99')
+        habr_curr = tk.Label(table, text='99')
+        ayser_curr = tk.Label(table, text='99')
+
+        for w in table.children.values():
+            w.configure(bg=style.bg, fg=style.text, font=style.small)
+
+        hab_label.grid(row=1, column=0)
+        ayse_label.grid(row=2, column=0)
+        rcon1_label.grid(row=3, column=0)
+        rcon2_label.grid(row=4, column=0)
+        temp_label.grid(row=0, column=1)
+        curr_label.grid(row=0, column=2)
+        habr_temp.grid(row=1, column=1)
+        ayser_temp.grid(row=2, column=1)
+        rcon1_temp.grid(row=3, column=1)
+        rcon2_temp.grid(row=4, column=1)
+        habr_curr.grid(row=1, column=2)
+        ayser_curr.grid(row=2, column=2)
+
+        components[HAB_REACT].widgets['I'].append(habr_curr)
+        components[HAB_REACT].widgets['T'].append(habr_temp)
+        components[AYSE_REACT].widgets['I'].append(ayser_curr)
+        components[AYSE_REACT].widgets['T'].append(ayser_temp)
+        components[RCON1].widgets['T'].append(rcon1_temp)
+        components[RCON2].widgets['T'].append(rcon2_temp)
+
+        graph = tk.Canvas(graph_section,width=100, height=100)
+        graph.grid() # Why can't I use pack?
+
+        # ---------------- Radiator Control ----------------
+        for i in range(8):
             rad = 'R{}'.format(i+1)
 
-            widgets['r_' + rad + '_isol'] = tk.Button(
-                radiators, text=ISOLATED, width=10, bg=style.ind_off,
-                command=lambda v=(i+1): rad_isol(v))
+            label = tk.Label(radiator_ctrl, text=rad,
+                             bg=style.bg, fg=style.text, font=style.normal)
+
             if i < 3:
-                widgets['r_' + rad] = cw.ENGLabel(
-                    radiators, text=rad, value=STOWED, style=style)
-                widgets['r_' + rad + '_stow'] = tk.Button(
-                    radiators, text=STOWED, width=10, bg=style.ind_off,
-                    command=lambda v=(i+1): rad_stow(v))
+                widgets['r_' + rad] = tk.Spinbox(
+                    radiator_ctrl, width=6, bg=style.bg, fg=style.text,
+                    font=style.normal,
+                    values=(STOWED, ISOLATED, LP1, LP2), wrap=True)
+            elif i < 6:
+                widgets['r_' + rad] = tk.Spinbox(
+                    radiator_ctrl, width=6, bg=style.bg, fg=style.text,
+                    font=style.normal,
+                    values=(ISOLATED, LP1, LP2), wrap=True)
             else:
-                widgets['r_' + rad] = cw.ENGLabel(radiators,
-                                                  text=rad, value=ISOLATED,
-                                                  style=style)
+                widgets['r_' + rad] = tk.Spinbox(
+                    radiator_ctrl, width=6, bg=style.bg, fg=style.text,
+                    font=style.normal,
+                    values=(ISOLATED, LP3), wrap=True)
 
-            widgets['r_' + rad].grid(row=i, column=0, padx=15)
-            widgets['r_' + rad + '_isol'].grid(row=i, column=1, padx=5, pady=5)
-            if i < 3:
-                widgets['r_' + rad + '_stow'].grid(row=i, column=2, padx=5)
-
-        all_buttons = cw.ENGLabelFrame(radiators, text='', style=style)
-        all_buttons.grid(row=3, column=2, rowspan=3, ipadx=5, ipady=5)
-
-        widgets['r_stow_all'] = tk.Button(
-            all_buttons, text='STOW-A', width=8, height=2, bg=style.ind_off,
-            command=lambda: [rad_stow(v+1) for v in range(3)])
-        widgets['r_isol_all'] = tk.Button(
-            all_buttons, text='ISOL-A', width=8, height=2, bg=style.ind_off,
-            command=lambda: [rad_isol(v+1) for v in range(6)])
-
-        widgets['r_stow_all'].pack(pady=5)
-        widgets['r_isol_all'].pack()
-
-        def rad_isol(v):
-            if widgets['r_R{}'.format(v)] != BROKEN:
-                widgets['r_R{}'.format(v)].value = ISOLATED
-                widgets['r_R{}'.format(v)].update()
-                for m in [1, 2]:
-                    widgets['hl{}_R{}'.format(m, v)].value = 1
-                    widgets['hl{}_R{}'.format(m, v)].press()
-            else:
-                pass
-
-        def rad_stow(v):
-            if widgets['r_R{}'.format(v)] != BROKEN:
-                widgets['r_R{}'.format(v)].value = STOWED
-                widgets['r_R{}'.format(v)].update()
-                for m in [1, 2]:
-                    widgets['hl{}_R{}'.format(m, v)].value = 1
-                    widgets['hl{}_R{}'.format(m, v)].press()
-            else:
-                pass
-
-    def _render_right_bot(self):
-        # Hab Reactor
-        hreactor = cw.ENGLabelFrame(self.right_frame_bot,
-                                    text="Habitat Reactor", style=style)
-        hreactor.pack(side=tk.LEFT, fill=tk.BOTH, expand=False)
-
-        widgets['hr_INJ-1'] = cw.Indicator(hreactor, text="R-INJ-1",
-                                           style=style)
-        widgets['hr_INJ-2'] = cw.Indicator(hreactor, text="R-INJ-2",
-                                           style=style)
-        widgets['hr_heater'] = cw.Indicator(hreactor, text="HEAT",
-                                            style=style)
-        widgets["hr_curr"] = cw.ENGLabel(hreactor, text='CURR',
-                                         value=0, unit='A', style=style)
-        widgets['hr_temp'] = cw.ENGLabel(hreactor, text='TEMP',
-                                         value=81, unit='*C', style=style)
-        widgets['a_hr_overtemp'] = cw.Alert(hreactor, text="OVERTEMP",
-                                            style=style)
-
-        widgets['hr_INJ-1'].grid(row=0, column=0, padx=10)
-        widgets['hr_INJ-2'].grid(row=1, column=0)
-        widgets['hr_heater'].grid(row=2, column=0)
-        widgets["hr_curr"].grid(row=0, column=1, sticky=tk.W)
-        widgets['hr_temp'].grid(row=1, column=1, sticky=tk.W)
-        widgets['a_hr_overtemp'].grid(row=2, column=1)
-
-        graph_frame = tk.Frame(hreactor)
-        graph_width = 400
-        widgets['hr_graph'] = tk.Canvas(graph_frame,
-                                        width=graph_width, height=200)
-        graph_frame.grid(row=0, column=2, rowspan=3, padx=10, pady=10)
-        widgets['hr_graph'].pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-        hreactor.grid_columnconfigure(0, weight=1, minsize=60)
-        hreactor.grid_columnconfigure(1, weight=1, minsize=70)
-        hreactor.grid_columnconfigure(2, weight=3, minsize=graph_width)
-
-        hrconfinement = cw.ENGLabelFrame(self.right_frame_bot,
-                                         text="Reactor Confinement",
-                                         style=style)
-        hrconfinement.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        widgets['hr_RCON-1'] = cw.Indicator(hrconfinement, text="RCON-1",
-                                            style=style)
-        widgets['hr_RCON-2'] = cw.Indicator(hrconfinement, text="RCON-2",
-                                            style=style)
-        widgets["hr_RCON-1_temp"] = cw.ENGLabel(hrconfinement, text='TEMP',
-                                                value=84, unit='*C',
-                                                style=style)
-        widgets['hr_RCON-2_temp'] = cw.ENGLabel(hrconfinement, text='TEMP',
-                                                value=80, unit='*C',
-                                                style=style)
-        widgets['hr_BATT'] = cw.ENGLabel(hrconfinement, text='BATT',
-                                         value=2000, unit='As',
-                                         style=style)
-        widgets['a_hr_lowBatt'] = cw.Alert(hrconfinement, text='LOW BATT',
-                                           style=style)
-
-        widgets['hr_RCON-1'].grid(row=0, column=0)
-        widgets['hr_RCON-2'].grid(row=1, column=0)
-        widgets["hr_RCON-1_temp"].grid(row=0, column=1)
-        widgets['hr_RCON-2_temp'].grid(row=1, column=1)
-        widgets['hr_BATT'].grid(row=2, column=0, columnspan=2, pady=10)
-        widgets['a_hr_lowBatt'].grid(row=3, column=0, columnspan=2)
-
-        hrconfinement.grid_columnconfigure(0, weight=1, minsize=60)
-        hrconfinement.grid_columnconfigure(1, weight=1, minsize=70)
+            label.grid(row=i, column=0)
+            widgets['r_' + rad].grid(row=i, column=1, padx=15)
 
 
 # MAIN LOOP
 app = MainApplication()    # Essential. Do not remove.
-
-# Testing
-widgets['a_ATMO'].after(1200, widgets['a_ATMO'].alert())
-widgets['a_master'].alert()
-widgets['a_hab_gnomes'].alert()
-# /Testing
-
+app.bind_all('<Key>', lambda e: keybinds(e))
+widgets['a_asteroid'].alert()
 app.mainloop()    # Essential. Do not remove.
