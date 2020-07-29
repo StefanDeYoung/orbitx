@@ -1,0 +1,70 @@
+EL(i)
+6: Hab Bus 1 Volt
+7: Hab Bus 2 Volt
+8: Hab Bus 3 Volt
+9: Ayse Bus Volt
+11: Hab Bus 1 Curr
+12: Hab Bus 2 Curr
+13: Hab Bus 3 Curr
+14: Ayse Bus Curr
+Line 1615
+        FOR i = 1 TO 15
+         EL(i)=CVS(mid$(inpSTR$,k,4)):k=k+4
+
+Zvar(i):
+3: Hab Fuel
+4: AYSE Fuel
+13: Whether Hab and AYSE are docked. Docked = 150, Undocked=0. See line 227,228
+24: Rad shield power% ??? see line 240
+25: Engine Thrust in % (either AYSE or Hab depending on Zvar(13))
+Line 1609
+        FOR i = 1 TO 26
+         Zvar#(i)=CVD(mid$(inpSTR$,k,8)):k=k+8
+
+CVD->quick basic str_to_double
+CVs->quick basic str_to_single
+CVi->quick basic str_to_integer
+mid$->quick basic substring(input_str, start, length); input_str will have '$' post-fix
+coolantPump(i=i:10):
+
+coolant(i=1:10,j=0:3):
+1:3, 0: temperature of coolant loop (see line 297)
+1:3, 0: pump%
+
+
+RCcap = switch(57, 11)
+
+switch(x,y):
+45,5: describes the colour of AgravAcc
+0:33, 2: x coordinate of some screen LOCATE
+0:33, 4: y coordiate of some screen LOCATE
+0:33, 5: ASCII character of some screen element (PRINT CHR$(206 - (switch(i, 5) * 20));)
+x, 5: Whether the component is on or off??? based on lne 359
+x, 8: Component temperature??? based on line 357
+0:33, 11: Coolant loop of an element.
+    10: no connection
+    3: broken? 'B'
+    16: isol?
+    32: loop 3?
+    and then presumably 1 and 2 are possible
+x, 12: the % of power turned into heat energy for device x???
+    line 1634/850 heat = power * switch(dev, 12)
+
+switchlabel(i=1:33):
+# Seems to be the names of switches in strings
+# based on line 272:
+    switch(i,2), switch(i,4) is the x,y location of swtichlabel(i)
+    siwtch(i,5) is the colour of switchlabel(i)
+
+clr is usually referring to a colour
+
+pressure
+    sets the colour of "air intake" on line 293
+
+dev
+    pretty sure that this stands for "device"
+
+SWITCHs%(i=70):
+    line 1441
+    FOR i = 1 TO 64
+         SWITCHs%(i)=cvi(mid$(inpSTR$,k,2)):k=k+2
