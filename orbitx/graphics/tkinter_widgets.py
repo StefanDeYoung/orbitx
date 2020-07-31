@@ -1,5 +1,6 @@
 import tkinter as tk
 from orbitx.graphics.tkinter_style import Style
+from orbitx.data_structures import PhysicsState, EngineeringState
 from typing import Union, Optional
 from PIL import Image, ImageColor, ImageTk
 
@@ -20,68 +21,140 @@ def set_im_style(im: Image, bg: tuple, fg: tuple) -> Image:
     return im
 
 
-class ENGLabel(tk.Label):
+class Label(tk.Label):
     """
-    Use to display a label that also has a value, which may take a unit.
-    E.g. ENGLabel(parent, text='FUEL', value=1000, unit='kg'
+    Use to display a physical characteristic of a component. e.g. Voltage
+    E.g. rcon1_vdisplay = cw.ENGDisplayLabel(parent, RCON1, 'V')
     """
 
-    def __init__(self, parent: tk.Widget, text: str = '',
-                 value: Union[int, str]= 'n/a', unit: Optional[str] = None,
-                 style=Style('default'), small: Optional[bool] = False):
+    def __init__(self, parent: tk.Widget, component: str, vartype: str):
         super().__init__(parent)
-        self.text = text
-        self.value = value
-        self.unit = unit
+        self.name = component
+        self.style = parent.style
 
-        self.configure(anchor=tk.W, justify=tk.LEFT,
-                       bg=style.bg, fg=style.text)
+        self.value = 999
+        self.vartype = vartype
 
-        if small:
-            self.configure(font=style.small)
+        self.display()
+
+    def display(self):
+        self.configure(text=self.text_format(),
+                       anchor=tk.W,
+                       justify=tk.LEFT,
+                       bg=self.style.bg,
+                       fg=self.style.text,
+                       font=self.style.small
+                       )
+
+    def update_value(self, pstate: PhysicsState):
+        if self.vartype == 'F':
+            self.value = pstate[self.name].fuel
         else:
-            self.configure(font=style.normal)
+            component = pstate.engineering[self.name]
+            if self.vartype == 'V':
+                self.value = component.voltage
+            elif self.vartype == 'A':
+                self.value = component.current
+            elif self.vartype == 'R':
+                self.value = component.resistance
+            elif self.vartype == 'P':
+                self.value = component.voltage * component.current
+            elif self.vartype == 'T':
+                self.value = component.temperature
+            elif self.vartype == 'L':
+                self.value = component.get_coolant_loop()
 
-        self.update_value(self.value)
+        self.display()
 
-    def text_decorator(self) -> str:
-        if self.unit is not None:
-            return self.text + ' ' + str(self.value) + ' ' + self.unit
+    def text_format(self):
+        if self.vartype == 'L':
+            return 'LP-{}'.format(self.value)
         else:
-            return self.text + ' ' + str(self.value)
-
-    def update_value(self, value):
-        self.value = value
-        self.configure(text=self.text_decorator())
+            return str(self.value)
 
 
-class ENGLabelFrame(tk.LabelFrame):
+class UnitLabel(Label):
+    """
+    An UnitLabel, where the unit is also displayed
+    """
+    def __init__(self, parent: tk.Widget, component, vartype: str):
+        assert vartype != 'L'
+
+        units = {'V': 'V',
+                 'A': 'A',
+                 'R': 'Ω',  # U+2126
+                 'P': 'W',
+                 'T': '℃',  # U+2103
+                 'F': 'kg'}
+
+        self.unit = units[vartype]
+
+        super().__init__(parent, component, vartype)
+
+    def text_format(self):
+        if self.vartype == 'F':
+            return '{} kg'.format(self.value)
+        elif self.value > 999:
+            return '{} k{}'.format(self.value / 1000, self.unit)
+        else:
+            return '{} {}'.format(self.value, self.unit)
+
+
+class LabelFrame(tk.LabelFrame):
     """A subdivision of the GUI using ENG styling.
     E.g. master = ENGLabelFrame(parent, text='Master Control')
     """
 
-    def __init__(self, parent: tk.Widget, text: str, style=Style('default')):
-        font = style.normal
-        super().__init__(parent, text=text,
-                         font=style.normal, fg=style.text, bg=style.bg)
+    def __init__(self, parent: tk.Widget, text: str):
+        self.style = parent.style
+        super().__init__(parent,
+                         text=text,
+                         font=self.style.normal,
+                         fg=self.style.text,
+                         bg=self.style.bg)
 
 
-class ENGButton(tk.Button):
+class EGridBox(tk.Frame):
+    """A box of labels for the EGrid. Use this for Reactor, and Power Bus.
+    E.g. master = ENGLabelFrame(parent, text='Master Control')
     """
-    A master class for specialised buttons
+
+    def __init__(self, parent: tk.Widget):
+        self.style = parent.style
+        super().__init__(parent, bg=self.style.bg, bd=2, relief=tk.RIDGE)
+
+
+class Title(tk.Label):
+    """A textbox with custom styling"""
+
+    def __init__(self, parent: tk.Widget, *args, **kwargs):
+        self.style = parent.style
+        super().__init__(parent,
+                         bg=self.style.bg,
+                         fg=self.style.text,
+                         font=self.style.normal,
+                         *args, **kwargs)
+
+
+class Button(tk.Button):
+    """
+    A master class for specialised buttons.
+    Buttons have an off_state(), on_state() and are bound by default to
+    the press() command.
     """
 
-    def __init__(self, parent, style=Style('default'), *args, **kwargs):
+    def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
-        self.style = style
+        self.style = parent.style
         self.value = 0
-        self.configure(bg=style.bg,
-                       fg=style.text,
-                       font=style.normal,
+        self.configure(bg=self.style.bg,
+                       fg=self.style.text,
+                       font=self.style.normal,
                        command=self.press)
 
         # Allows for button width, height to be specified in px
-        self.px_img = tk.PhotoImage(width=1, height=1)
+        if not ('blank_pixel') in images:
+            images['blank_pixel'] = tk.PhotoImage(width=1, height=1)
 
     def off_state(self):
         self.value = 0
@@ -96,20 +169,28 @@ class ENGButton(tk.Button):
             self.on_state()
 
 
-class TextButton(ENGButton):
+class TextButton(Button):
     """
     Represents an flat button on the e-grid.
-    E.g. ion1 = TextButton(parent, text='RAD')
+    E.g. ion1 = TextButton(parent, text='RCON1', block=True)
+
+    Options:
+        block:bool=False    Does the button appear in a block with other
+                            buttons, so that the block will need to be
+                            connected to a switch?
     """
 
-    def __init__(self, parent, connected: bool = False,
-                 style=Style('default'), *args, **kwargs):
-        super().__init__(parent, style=style, *args, **kwargs)
-
-        self.configure(font=style.small,
+    def __init__(self, parent, block: bool = False, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.configure(font=self.style.small,
                        relief=tk.FLAT)
 
-        if connected:
+        if isinstance(parent, EGridBox) or isinstance(parent, EGridComponent):
+            self.configure(image=images['blank_pixel'],
+                           compound='c',
+                           height=5)
+
+        if block:
             self.connection = self
             self.linked_buttons = [self]
 
@@ -137,145 +218,66 @@ class TextButton(ENGButton):
             self.connection.off_state()
 
 
-class Indicator(ENGButton):
+class EGridComponent(tk.Frame):
     """
-    Represents an indicator light/toggle push-button switch.
-    E.g. radar = Indicator(parent, text='RAD')
+    Represents an flat button on the e-grid with associated temperature and
+    coolant loop displays.
+    E.g. ion1 = TextButton(parent, component='RCON1')
+
+    Options:
+        block:bool=False    Does the button appear in a block with other
+                            buttons, so that the block will need to be
+                            connected to a switch?
+        switch:tuple   Whether a =+= style switch should appear
+            length:str          The size of the =+= style switch e.g. '1h','3v'
+            side:str            On which side of the text should the switch appear?
+                                Use tk.N, tk.S, tk.E, tk.W
     """
 
-    def __init__(self, parent, style=Style('default'), *args, **kwargs):
-        super().__init__(parent, style=style, *args, **kwargs)
+    def __init__(self, parent, component, switch: Optional[tuple] = None,
+                 block: bool = False, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.style = parent.style
+        self.configure(bg=self.style.bg)
 
-        self.configure(image=self.px_img,
-                       compound='c',
-                       width=40,
-                       height=40,
-                       fg=self.style.bg)
-
-        self.off_state()
-
-    def off_state(self):
         self.value = 0
-        self.configure(relief=tk.SUNKEN, bg=self.style.ind_off)
+        self.name = component
 
-    def on_state(self):
-        self.value = 1
-        self.configure(relief=tk.RAISED, bg=self.style.ind_on)
+        self.textbutton = TextButton(self, text=self.name, block=block)
+        self.temperature = Label(self, component, 'T')
+        self.coolant = Label(self, component, 'L')
 
+        # self.keyboard = Label
 
-class OneTimeButton(ENGButton):
-    """
-    A button, which can only be pressed once.
-    """
+        if block:
+            self.connection = self
+            self.linked_buttons = [self]
 
-    def __init__(self, parent, style=Style('default'), *args, **kwargs):
-        super().__init__(parent, style=style, *args, **kwargs)
+        if switch is not None:
+            length, side = switch
+            self.switch = Switch(self, length)
+            if side == tk.W:
+                self.switch.grid(row=0, column=0)
+                self.textbutton.grid(row=0, column=1)
+                self.temperature.grid(row=0, column=2)
+                self.coolant.grid(row=0, column=3)
+            if side == tk.E:
+                self.switch.grid(row=1, column=3)
+            elif side == tk.N:
+                self.switch.grid(row=0, column=1)
+            elif side == tk.S:
+                self.switch.grid(row=2, column=1)
+        else:
+            self.textbutton.grid(row=1, column=0)
+            self.temperature.grid(row=1, column=1)
+            self.coolant.grid(row=1, column=2)
 
-        self.configure(image=self.px_img,
-                       compound='c',
-                       width=60,
-                       height=30,
-                       relief=tk.RIDGE,
-                       bg=self.style.otb_unused,
-                       fg=self.style.bg
-                       )
-
-    def on_state(self):
-        self.value = 1
-        self.configure(state=tk.DISABLED,
-                       relief=tk.FLAT,
-                       bg=self.style.otb_used,
-                       fg=self.style.otb_unused
-                       )
-
-
-class Alert(ENGButton):
-    """
-    Stays flat and gray until alerted. Then it flashes, until clicked.
-    When clicked, the button should be flat, deactivated, and red, and
-    stop flashing, but stay red until the issue causing the alert is cleared.
-
-    Optional invisible tag sets the text to the same colour as the background.
-    """
-
-    def __init__(self, parent, invis: bool = False, counter: int = None,
-                 style=Style('default'), *args, **kwargs):
-        super().__init__(parent, style=style, *args, **kwargs)
-
-        self.configure(image=self.px_img,
-                       compound='c',
-                       width=80,
-                       height=20,
-                       state=tk.DISABLED,
-                       command=self.quiet
-                       )
-        self.normal_state()
-
-        if invis:
-            self.configure(disabledforeground=self.style.bg)
-
-        if counter is not None:
-            self.counter = counter
-
-        # Duty Cycle = 0.8 means activated for 80% of the period
-        self.flash_period = 450    # ms
-        self.duty_cycle = 0.7
-
-    def alert(self):
-        self.value = 1
-        self.alerted_state()
-
-    def alerted_state(self):
-        self.configure(relief=tk.RAISED,
-                       bg=self.style.alert_bg,
-                       fg=self.style.alert_text,
-                       state=tk.NORMAL)
-        if self.value:
-            self.event = self.after(int(self.duty_cycle * self.flash_period),
-                                    lambda: self.normal_state())
-
-    def normal_state(self):
-        self.configure(relief=tk.FLAT,
-                       bg=self.style.bg,
-                       fg=self.style.text
-                       )
-        if self.value:
-            self.event = self.after(int((1-self.duty_cycle)*self.flash_period),
-                                    lambda: self.alerted_state())
-
-    def quiet(self):
-        # Stop flashing, but stay alerted
-        self.after_cancel(self.event)
-        self.value = 0
-        self.alerted_state()
-        self.configure(state=tk.DISABLED, relief=tk.GROOVE)
+    def update_labels(self, pstate: PhysicsState):
+        self.temperature.update_value()
+        self.coolant.update_value()
 
 
-class ENGScale(tk.Scale):
-    """A slider."""
-
-    def __init__(self, parent, label: ENGLabel, style=Style('default')):
-        super().__init__(parent)
-
-        self.label = label
-
-        self.configure(from_=0,
-                       to_=100,
-                       resolution=5,
-                       orient=tk.HORIZONTAL,
-                       bg=style.bg,
-                       fg=style.text,
-                       troughcolor=style.bg,
-                       showvalue=0,
-                       command=self.update_slider_label
-                       )
-
-    def update_slider_label(self, val):
-        self.label.value = val
-        self.label.update()
-
-
-class Switch(ENGButton):
+class Switch(Button):
     """
     A pipe that shows electrical connections between elements of the
     power grid.
@@ -283,12 +285,14 @@ class Switch(ENGButton):
     length='1h' shows '💢' for open and '=' for closed
     length='1v' shows '💢' for open and '||' for closed
     length='3h' shows '=💢=' for open and '===' for closed
+
+    connection = a tk.Frame that contains multiple textbuttons that should
+    all be toggled by this switch
     """
 
-    def __init__(self, parent, length: str = '1h', style=Style('default'),
-                 connection: Optional[tk.Widget] = None,
-                 *args, **kwargs):
-        super().__init__(parent, style=style, *args, **kwargs)
+    def __init__(self, parent, length: str = '1h',
+                 connection: Optional[tk.Widget] = None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
 
         assert int(length[0]) % 2 == 1  # Length must be odd
         assert length[1] == 'h' or length[1] == 'v'
@@ -304,9 +308,9 @@ class Switch(ENGButton):
                        height=self.height,
                        relief=tk.FLAT,
                        bd=0,
-                       highlightbackground=style.bg,
+                       highlightbackground=self.style.bg,
                        highlightthickness=0,
-                       highlightcolor=style.bg
+                       highlightcolor=self.style.bg
                        )
         self.off_state()
 
@@ -314,18 +318,6 @@ class Switch(ENGButton):
             self.connections = None
         else:
             self.connections = self.make_connections(connection)
-
-        # # TODO Add a char to the button to show its keybinding
-        # # As far as I can tell, compound=tk.CENTER is the only choice
-        # # to be able to superimpose the text on the button's image
-        # # Using this method puts a border around the button, which, for some
-        # # reason isn't disabled by setting the bd, highlightbackground, and
-        # # highlightthickness. Keep reading
-        # # https://effbot.org/tkinterbook/button.htm
-        #
-        # self.configure(fg=style.text,
-        #                text='a',
-        #                compound=tk.CENTER)
 
     def off_state(self):
         self.value = 0
@@ -349,8 +341,15 @@ class Switch(ENGButton):
                     button.off_state()
 
     def make_connections(self, connection):
-        textbuttons = [v for k, v in connection.children.items()
-                       if '!textbutton' in k]
+        if isinstance(connection, EGridBox):
+            grid_components = [v for k, v in connection.children.items()
+                               if '!egridcomponent' in k]
+            textbuttons = []
+            for c in grid_components:
+                textbuttons.append(c.children['!textbutton'])
+        else:
+            textbuttons = [v for k, v in connection.children.items()
+                           if '!textbutton' in k]
         for button in textbuttons:
             button.change_connection(self)
         return textbuttons
@@ -412,7 +411,121 @@ class Switch(ENGButton):
             ImageTk.PhotoImage(sw_on)
 
 
-class Enabler(ENGButton):
+class Indicator(Button):
+    """
+    Represents an indicator light/toggle push-button switch.
+    E.g. radar = Indicator(parent, text='RAD')
+    """
+
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+
+        self.configure(image=images['blank_pixel'],
+                       compound='c',
+                       width=40,
+                       height=40,
+                       fg=self.style.bg)
+
+        self.off_state()
+
+    def off_state(self):
+        self.value = 0
+        self.configure(relief=tk.SUNKEN, bg=self.style.ind_off)
+
+    def on_state(self):
+        self.value = 1
+        self.configure(relief=tk.RAISED, bg=self.style.ind_on)
+
+
+class OneTimeButton(Button):
+    """
+    A button, which can only be pressed once.
+    """
+
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+
+        self.configure(image=images['blank_pixel'],
+                       compound='c',
+                       width=60,
+                       height=30,
+                       relief=tk.RIDGE,
+                       bg=self.style.otb_unused,
+                       fg=self.style.bg
+                       )
+
+    def on_state(self):
+        self.value = 1
+        self.configure(state=tk.DISABLED,
+                       relief=tk.FLAT,
+                       bg=self.style.otb_used,
+                       fg=self.style.otb_unused
+                       )
+
+
+class Alert(Button):
+    """
+    Stays flat and gray until alerted. Then it flashes, until clicked.
+    When clicked, the button should be flat, deactivated, and red, and
+    stop flashing, but stay red until the issue causing the alert is cleared.
+
+    Optional invisible tag sets the text to the same colour as the background.
+    """
+
+    def __init__(self, parent, invis: bool = False, counter: int = None,
+                 *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+
+        self.configure(image=images['blank_pixel'],
+                       compound='c',
+                       width=80,
+                       height=20,
+                       state=tk.DISABLED,
+                       command=self.quiet
+                       )
+        self.normal_state()
+
+        if invis:
+            self.configure(disabledforeground=self.style.bg)
+
+        if counter is not None:
+            self.counter = counter
+
+        # Duty Cycle = 0.8 means activated for 80% of the period
+        self.flash_period = 450    # ms
+        self.duty_cycle = 0.7
+
+    def alert(self):
+        self.value = 1
+        self.alerted_state()
+
+    def alerted_state(self):
+        self.configure(relief=tk.RAISED,
+                       bg=self.style.alert_bg,
+                       fg=self.style.alert_text,
+                       state=tk.NORMAL)
+        if self.value:
+            self.event = self.after(int(self.duty_cycle * self.flash_period),
+                                    lambda: self.normal_state())
+
+    def normal_state(self):
+        self.configure(relief=tk.FLAT,
+                       bg=self.style.bg,
+                       fg=self.style.text
+                       )
+        if self.value:
+            self.event = self.after(int((1-self.duty_cycle)*self.flash_period),
+                                    lambda: self.alerted_state())
+
+    def quiet(self):
+        # Stop flashing, but stay alerted
+        self.after_cancel(self.event)
+        self.value = 0
+        self.alerted_state()
+        self.configure(state=tk.DISABLED, relief=tk.GROOVE)
+
+
+class Enabler(Button):
     """
     A button that controls whether another button or component can be
     interacted with.
@@ -422,9 +535,8 @@ class Enabler(ENGButton):
     widgets['arm_SRB'] = cw.Enabler(frame, enables=widgets['SRB'], style=style)
     """
 
-    def __init__(self, parent, enables: tk.Widget, style=Style('default'),
-                 *args, **kwargs):
-        super().__init__(parent, style=style)
+    def __init__(self, parent, enables: tk.Widget, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
 
         self.enables = enables
 
@@ -439,23 +551,11 @@ class Enabler(ENGButton):
                        height=self.height,
                        relief=tk.RIDGE,
                        bd=0,
-                       highlightbackground=style.bg,
+                       highlightbackground=self.style.bg,
                        highlightthickness=0,
-                       highlightcolor=style.bg
+                       highlightcolor=self.style.bg
                        )
         self.off_state()
-
-        # # TODO Add a char to the button to show its keybinding
-        # # As far as I can tell, compound=tk.CENTER is the only choice
-        # # to be able to superimpose the text on the button's image
-        # # Using this method puts a border around the button, which, for some
-        # # reason isn't disabled by setting the bd, highlightbackground, and
-        # # highlightthickness. Keep reading
-        # # https://effbot.org/tkinterbook/button.htm
-        #
-        # self.configure(fg=style.text,
-        #                text='a',
-        #                compound=tk.CENTER)
 
     def off_state(self):
         self.value = 0
@@ -485,3 +585,37 @@ class Enabler(ENGButton):
 
         images['enabler_armed'] = ImageTk.PhotoImage(armed)
         images['enabler_unarmed'] = ImageTk.PhotoImage(unarmed)
+
+
+class ENGScale(tk.Scale):
+    """A slider."""
+
+    def __init__(self, parent, label: Label):
+        super().__init__(parent)
+        self.style = parent.style
+        self.label = label
+
+        self.configure(from_=0,
+                       to_=100,
+                       resolution=5,
+                       orient=tk.HORIZONTAL,
+                       bg=self.style.bg,
+                       fg=self.style.text,
+                       troughcolor=self.style.bg,
+                       showvalue=0,
+                       command=self.update_slider_label
+                       )
+
+    def update_slider_label(self, val):
+        self.label.value = val
+        self.label.update()
+
+
+class Spinbox(tk.Spinbox):
+
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.style = parent.style
+        self.configure(bg=self.style.bg,
+                       fg=self.style.text,
+                       font=self.style.normal)
