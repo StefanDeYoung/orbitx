@@ -619,3 +619,19 @@ class Spinbox(tk.Spinbox):
         self.configure(bg=self.style.bg,
                        fg=self.style.text,
                        font=self.style.normal)
+
+        if 'values' in kwargs:
+            self.views = {}
+
+    def bind_view_selector(self, views):
+        """views is a dict {'View1': tkinter.Widget_of_view1, ...}
+        self.values must equal ['View1', 'View2']"""
+        self.views = views
+        self.bind('<Button-1>', lambda e: self.select_view(self.get()))
+
+    def select_view(self, view: str):
+        for k, v in self.views.items():
+            if k == view:
+                v.grid_remove()
+            else:
+                v.grid()

@@ -114,12 +114,29 @@ class Subsystems(tk.Frame):
         widgets['arm_SRB'] = cw.Enabler(frame, enables=widgets['SRB'])
         widgets['CHUTE'] = cw.OneTimeButton(frame, text='CHUTE')
 
-        # A couple of labels
-        hab_reactor_temp = cw.UnitLabel(frame, strings.HAB_REACT, 'T')
-        cl1_pump_power = cw.Label(frame, strings.LP1, 'P')
+        # Views
+        views = {}
+
+        # View1
+        VIEW1 = 'View1'
+        views[VIEW1] = cw.LabelFrame(frame, VIEW1)
+        hab_reactor_temp = cw.UnitLabel(views[VIEW1], strings.HAB_REACT, 'T')
+        cl1_pump_power = cw.Label(views[VIEW1], strings.LP1, 'P')
+        values = cw.Spinbox(views[VIEW1], width=2, from_=0, to=100, increment=5)
+
+        hab_reactor_temp.grid(row=0, column=0)
+        cl1_pump_power.grid(row=1, column=0)
+        values.grid(row=2, column=0)
+
+        # View2
+        VIEW2 = 'View2'
+        views[VIEW2] = cw.LabelFrame(frame, VIEW2)
+        hello_world = cw.Title(views[VIEW2], text='Hello World')
+        hello_world.grid(row=0, column=0)
 
         # A spinbox
-        select = cw.Spinbox(frame, width=2, from_=0, to=100, increment=5)
+        select = cw.Spinbox(frame, values=(VIEW1, VIEW2), wrap=True, width=5)
+        select.bind_view_selector(views)
 
         # Display label
         widgets['event_display'] = tk.Label(
@@ -132,15 +149,15 @@ class Subsystems(tk.Frame):
         widgets[strings.INS].grid(row=0, column=1, padx=5, pady=5)
         widgets[strings.LOS].grid(row=1, column=1, padx=5, pady=5)
         widgets[strings.SRB].grid(row=0, column=2, padx=5, pady=5)
-        widgets['arm_SRB'].grid(row=0, column=3, padx=5, pady=5)
         widgets['CHUTE'].grid(row=1, column=2, padx=5, pady=5)
-
-        hab_reactor_temp.grid(row=1, column=3, padx=5, pady=5)
-        cl1_pump_power.grid(row=2, column=3, padx=5, pady=5)
-        select.grid(row=3, column=3)
-
-        widgets['event_display'].grid(row=4, column=0, padx=5, pady=40,
-                                      columnspan=4)
+        widgets['arm_SRB'].grid(row=0, column=3, padx=5, pady=5)
+        select.grid(row=1, column=3)
+        # Note that VIEW1, VIEW2 are gridded on top of each other
+        views[VIEW1].grid(row=0, column=4, rowspan=3, padx=5, pady=5)
+        views[VIEW2].grid(row=0, column=4, rowspan=3, padx=5, pady=5)
+        views[VIEW2].grid_remove()
+        widgets['event_display'].grid(
+            row=4, column=0, padx=5, pady=20, columnspan=4)
 
 
 # MAIN
