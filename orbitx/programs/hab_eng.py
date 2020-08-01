@@ -18,6 +18,7 @@ from orbitx import network
 from orbitx import programs
 from orbitx.graphics.compat_gui import StartupFailedGui
 from orbitx.graphics.eng_gui import MainApplication
+from orbitx.graphics.tkinter_style import Style
 from orbitx.strings import HABITAT
 
 
@@ -63,7 +64,7 @@ def main(args: argparse.Namespace):
         gui.update_labels(state[HABITAT].pos[0])
         gui.after(int(1000 / common.FRAMERATE), update)
 
-    gui = MainApplication()
+    gui = MainApplication(Style('flat'))
     update()
     gui.mainloop()
 

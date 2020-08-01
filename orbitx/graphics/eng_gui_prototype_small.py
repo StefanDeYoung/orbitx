@@ -28,10 +28,16 @@ class MainApplication(tk.Tk):
 
         # Initialise main page
         self.subsystems = Subsystems(self)
-        self.subsystems.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        # self.subsystems.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        self.subsystems.grid(row=0, column=0, sticky='nesw')
 
         self.e_grid = EGrid(self)
-        self.e_grid.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH)
+        # self.e_grid.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH)
+        self.e_grid.grid(row=0, column=1, sticky=tk.NSEW)
+
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
 
     def keybinds(self, event):
         widgets['event_display'].configure(text=event.char)
